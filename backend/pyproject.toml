@@ -1,0 +1,44 @@
+[project]
+name = "paperwise-backend"
+version = "0.1.0"
+description = "AI-powered research paper analysis backend"
+authors = [
+    {name = "PaperWise Team", email = "team@paperwise.ai"}
+]
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi>=0.104.0",
+    "uvicorn[standard]>=0.24.0",
+    "python-multipart>=0.0.6",
+    "pydantic>=2.5.0",
+    "langchain>=0.0.350",
+    "langchain-openai>=0.0.2",
+    "langchain-community>=0.0.10",
+    "openai>=1.6.1",
+    "pymupdf>=1.23.8",
+    "python-dotenv>=1.0.0",
+    "chromadb>=0.4.18",
+    "sentence-transformers>=2.2.2",
+    "numpy>=1.24.3",
+    "pandas>=2.1.4",
+    "httpx>=0.25.2",
+    "aiofiles>=23.2.1",
+    "Pillow>=10.1.0",
+    "tiktoken>=0.5.2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.3",
+    "pytest-asyncio>=0.21.1",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.uv]
+dev-dependencies = [
+    "pytest>=7.4.3",
+    "pytest-asyncio>=0.21.1",
+]
