@@ -22,6 +22,30 @@ Your AI agent system provides:
 
 The system is ready to analyze research papers with the depth and insight that researchers need! 🚀
 
+## 📸 Application Flow
+
+Here's how PaperWise works in practice:
+
+### 1. Upload Interface
+![Upload Interface](figures/fig1.png)
+*Clean, intuitive drag-and-drop interface for uploading research papers*
+
+### 2. Analysis in Progress
+![Analysis Progress](figures/fig2.png)
+*Real-time progress tracking as the AI agents analyze your paper*
+
+### 3. Comprehensive Results
+![Analysis Results](figures/fig3.png)
+*Detailed analysis covering methodology, results, and implications*
+
+### 4. Interactive Queries
+![Interactive Features](figures/fig4.png)
+*Ask specific questions about any aspect of the paper*
+
+### 5. Final Insights
+![Final Insights](figures/fig5.png)
+*Complete analysis with actionable insights and recommendations*
+
 ## 🏗️ Architecture
 
 ### Frontend
