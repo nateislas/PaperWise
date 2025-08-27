@@ -31,7 +31,10 @@ PaperWise helps researchers understand:
 ## 🎥 Demo
 
 <div align="center">
-  <img src="figures/demo.gif" alt="PaperWise Demo" width="800"/>
+  <video width="800" controls>
+    <source src="figures/demo.mp4" type="video/mp4">
+    Your browser does not support the video tag.
+  </video>
   <br/>
   <em>🚀 Watch PaperWise in action - From upload to comprehensive analysis in seconds</em>
 </div>
