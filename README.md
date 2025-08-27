@@ -1,94 +1,86 @@
-# PaperWise - AI Research Paper Analysis Agent
+# PaperWise 🤖📚
 
-An intelligent AI agent designed to provide deep, critical analysis of research papers, going beyond simple summarization to offer the kind of insights a PhD student or Principal Investigator would seek.
+**AI-Powered Research Paper Analysis for PhD Students and Researchers**
 
-## 🎯 Purpose
+PaperWise is an intelligent AI agent system that provides deep, critical analysis of research papers, going beyond simple summarization to offer the kind of insights that PhD students and Principal Investigators need for their research.
+
+[![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://python.org)
+[![React](https://img.shields.io/badge/React-18.2.0-blue.svg)](https://reactjs.org)
+[![TypeScript](https://img.shields.io/badge/TypeScript-4.7.4-blue.svg)](https://typescriptlang.org)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-green.svg)](https://fastapi.tiangolo.com)
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+## ✨ Features
+
+- **🔍 Deep Analysis**: Critical evaluation of methodology, results, and implications
+- **🤖 Multi-Agent System**: Specialized AI agents working collaboratively
+- **📊 Research-Focused**: Designed specifically for PhD students and PIs
+- **💬 Interactive Queries**: Ask specific questions about any aspect of the paper
+- **📋 Structured Output**: Clear, organized analysis with actionable insights
+- **📄 Multi-format Support**: Advanced PDF parsing with table and figure extraction
+
+## 🎯 What PaperWise Analyzes
 
 PaperWise helps researchers understand:
+
 - **The "What" and "Why"**: Problem statements, hypotheses, and motivations
 - **The "How"**: Methodology, experimental design, and novelty
 - **The "Results and Impact"**: Key findings, interpretations, and limitations
 - **The "So What"**: Contribution to the field and relevance to your work
 
-## 🚀 What PaperWise Does
+## 🖼️ Application Flow
 
-Your AI agent system provides:
+<div align="center">
+  <img src="figures/fig1.png" alt="Upload Interface" width="200"/>
+  <img src="figures/fig2.png" alt="Analysis Progress" width="200"/>
+  <img src="figures/fig3.png" alt="Comprehensive Results" width="200"/>
+  <img src="figures/fig4.png" alt="Interactive Features" width="200"/>
+  <img src="figures/fig5.png" alt="Final Insights" width="200"/>
+</div>
 
-- **Deep Analysis**: Go beyond simple summarization to provide critical evaluation
-- **Multi-Agent Collaboration**: Specialized agents work together for comprehensive analysis
-- **Research-Focused**: Designed for PhD students and PIs with specific research questions
-- **Interactive Queries**: Ask specific questions about methodology, results, or implications
-- **Structured Output**: Clear, organized analysis with actionable insights
-
-The system is ready to analyze research papers with the depth and insight that researchers need! 🚀
-
-## 📸 Application Flow
-
-Here's how PaperWise works in practice:
-
-### 1. Upload Interface
-![Upload Interface](figures/fig1.png)
-*Clean, intuitive drag-and-drop interface for uploading research papers*
-
-### 2. Analysis in Progress
-![Analysis Progress](figures/fig2.png)
-*Real-time progress tracking as the AI agents analyze your paper*
-
-### 3. Comprehensive Results
-![Analysis Results](figures/fig3.png)
-*Detailed analysis covering methodology, results, and implications*
-
-### 4. Interactive Queries
-![Interactive Features](figures/fig4.png)
-*Ask specific questions about any aspect of the paper*
-
-### 5. Final Insights
-![Final Insights](figures/fig5.png)
-*Complete analysis with actionable insights and recommendations*
+*From upload to insights: Clean interface, real-time progress, comprehensive analysis, interactive queries, and actionable recommendations*
 
 ## 🏗️ Architecture
 
 ### Frontend
-- Modern React application with drag-and-drop file upload
-- Clean, intuitive interface for paper analysis
-- Real-time analysis progress tracking
+- **React 18** with TypeScript for type safety
+- **Tailwind CSS** for modern, responsive design
+- **Drag-and-drop** file upload interface
+- **Real-time** analysis progress tracking
+- **Markdown rendering** for rich analysis display
 
 ### Backend
-- Multi-agent system using Python and LangChain
-- Specialized agents for different analysis tasks:
-  - **PDF Parser Agent**: Extracts text, tables, and figures
-  - **Methodology Agent**: Analyzes experimental design and methods
-  - **Results Agent**: Interprets findings and statistical significance
-  - **Contextualization Agent**: Compares with existing literature
-  - **Orchestrator Agent**: Coordinates and synthesizes all analyses
+- **FastAPI** for high-performance REST API
+- **Multi-agent system** using LangChain
+- **Meta Llama models** for intelligent analysis
+- **Advanced PDF processing** with PyMuPDF
 
-## 🚀 Features
+### AI Agents
+- **📄 PDF Parser Agent**: Extracts text, tables, and figures
+- **🔬 Methodology Agent**: Analyzes experimental design and methods
+- **📊 Results Agent**: Interprets findings and statistical significance
+- **🌐 Contextualization Agent**: Compares with existing literature
+- **🎯 Orchestrator Agent**: Coordinates and synthesizes all analyses
 
-- **Deep Analysis**: Critical evaluation of methodology, results, and implications
-- **Contextual Understanding**: Cross-references with relevant literature
-- **Interactive Queries**: Ask specific questions about any aspect of the paper
-- **Structured Output**: Clear, organized analysis with actionable insights
-- **Multi-format Support**: PDF parsing with table and figure extraction
+## 🚀 Quick Start
 
-## 🛠️ Tech Stack
+### Prerequisites
+- Python 3.8+
+- Node.js 16+
+- [Llama API key](https://api.llama.com/)
 
-- **Frontend**: React, TypeScript, Tailwind CSS
-- **Backend**: Python, FastAPI, LangChain
-- **AI/ML**: Meta Llama models, Vector databases
-- **Document Processing**: PyMuPDF, LangChain document loaders
-- **Package Management**: uv (fast Python package manager)
-- **Deployment**: Docker, Cloud-ready
+### 1. Clone and Setup
+```bash
+git clone <repository-url>
+cd PaperWise
+```
 
-## 📋 Getting Started
+### 2. Set Environment Variable
+```bash
+export LLAMA_API_KEY='your-llama-api-key-here'
+```
 
-1. Clone the repository
-2. Install dependencies (see installation guide)
-3. Set up environment variables (LLAMA_API_KEY)
-4. Run the development server
-5. Upload a research paper and start analyzing!
-
-### Quick Start
-
+### 3. Run the Application
 ```bash
 # Start both backend and frontend
 ./start-paperwise.sh
@@ -96,14 +88,98 @@ Here's how PaperWise works in practice:
 # Or start individually:
 # Backend
 cd backend
-source .venv/bin/activate
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+pip install -r requirements.txt
+python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
-# Frontend
+# Frontend (in new terminal)
 cd frontend
+npm install
 npm start
 ```
 
-## 📖 Documentation
+### 4. Open Your Browser
+Navigate to [http://localhost:3000](http://localhost:3000)
 
-See the `/docs` folder for detailed setup and usage instructions.
+## 🛠️ Tech Stack
+
+| Component | Technology | Version |
+|-----------|------------|---------|
+| **Frontend** | React, TypeScript, Tailwind CSS | 18.2.0 |
+| **Backend** | FastAPI, Python | 0.104+ |
+| **AI/ML** | Meta Llama, LangChain | Latest |
+| **Document Processing** | PyMuPDF, LangChain | Latest |
+| **Package Management** | uv (Python), npm | Latest |
+| **Deployment** | Docker | Ready |
+
+## 📖 Usage
+
+1. **Upload a PDF**: Drag and drop or click to upload a research paper
+2. **Optional Query**: Add specific questions about the paper
+3. **Analyze**: Click "Analyze Paper" to start the AI analysis
+4. **Review Results**: View comprehensive analysis including:
+   - Executive summary
+   - Key insights
+   - Detailed analysis
+   - Recommendations for different stakeholders
+
+## 🔧 Configuration
+
+### Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `LLAMA_API_KEY` | Your Llama API key | **Required** |
+| `LLAMA_BASE_URL` | Llama API base URL | `https://api.llama.com/compat/v1/` |
+| `LLAMA_MODEL` | Llama model to use | `Llama-4-Maverick-17B-128E-Instruct-FP8` |
+| `LLAMA_TEMPERATURE` | Model temperature | `0.1` |
+| `UPLOAD_DIR` | File upload directory | `uploads` |
+| `MAX_FILE_SIZE` | Maximum file size | `50MB` |
+| `CHUNK_SIZE` | Text chunk size | `1000` |
+| `CHUNK_OVERLAP` | Chunk overlap size | `200` |
+
+## 📚 Documentation
+
+For detailed setup instructions, API documentation, and development guides, see the [Documentation](docs/README.md).
+
+## 🤝 Contributing
+
+We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details.
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## 🐛 Troubleshooting
+
+### Common Issues
+
+- **PDF Parsing Errors**: Ensure PDF is not password-protected or corrupted
+- **API Key Issues**: Verify Llama API key is valid and has sufficient credits
+- **Memory Issues**: Reduce chunk size for large documents
+- **Timeout Errors**: Increase timeout settings for complex analyses
+
+### Getting Help
+
+- Check the [Documentation](docs/README.md)
+- Review [Troubleshooting Guide](docs/README.md#troubleshooting)
+- Open an [Issue](../../issues) for bugs or feature requests
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- Built with [Meta Llama](https://llama.meta.com/) models
+- Powered by [LangChain](https://langchain.com/) for AI orchestration
+- UI components from [Lucide React](https://lucide.dev/)
+
+---
+
+<div align="center">
+  <strong>Made with ❤️ for the research community</strong>
+</div>
