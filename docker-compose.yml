@@ -8,13 +8,21 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4}
-      - OPENAI_TEMPERATURE=${OPENAI_TEMPERATURE:-0.1}
+      - LLAMA_API_KEY=${LLAMA_API_KEY}
+      - LLAMA_MODEL=${LLAMA_MODEL:-Llama-4-Maverick-17B-128E-Instruct-FP8}
+      - LLAMA_TEMPERATURE=${LLAMA_TEMPERATURE:-0.1}
+      - LLAMA_BASE_URL=${LLAMA_BASE_URL:-https://api.llama.com/compat/v1/}
+      - ENABLE_STREAMING=${ENABLE_STREAMING:-true}
+      - STREAM_CHUNK_SIZE=${STREAM_CHUNK_SIZE:-100}
+      - REQUEST_TIMEOUT=${REQUEST_TIMEOUT:-300}
+      - CONNECTION_TIMEOUT=${CONNECTION_TIMEOUT:-30}
+      - MAX_CONCURRENT_REQUESTS=${MAX_CONCURRENT_REQUESTS:-10}
       - UPLOAD_DIR=${UPLOAD_DIR:-uploads}
       - MAX_FILE_SIZE=${MAX_FILE_SIZE:-52428800}
       - CHUNK_SIZE=${CHUNK_SIZE:-1000}
       - CHUNK_OVERLAP=${CHUNK_OVERLAP:-200}
+      - MAX_TOKENS_PER_REQUEST=${MAX_TOKENS_PER_REQUEST:-4000}
+      - CHROMA_PERSIST_DIRECTORY=${CHROMA_PERSIST_DIRECTORY:-./chroma_db}
     volumes:
       - ./backend/uploads:/app/uploads
       - ./backend/chroma_db:/app/chroma_db
