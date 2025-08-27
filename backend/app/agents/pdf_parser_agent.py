@@ -6,6 +6,9 @@ import os
 from datetime import datetime
 
 from app.agents.base_agent import BaseAgent
+import re
+from app.config import settings
+import pathlib
 
 logger = logging.getLogger(__name__)
 
@@ -57,8 +60,8 @@ Provide clean, well-structured content that can be used by other analysis agents
             # Extract tables
             tables = self._extract_tables(doc)
             
-            # Extract figures
-            figures = self._extract_figures(doc)
+            # Extract figures (save image assets and collect metadata)
+            figures = self._extract_figures(doc, file_path)
             
             # Create document chunks
             documents = self._create_documents(text_content, metadata)
@@ -175,29 +178,89 @@ Provide clean, well-structured content that can be used by other analysis agents
         
         return tables
     
-    def _extract_figures(self, doc) -> List[Dict[str, Any]]:
-        """Extract figure information from the PDF"""
-        figures = []
+    def _extract_figures(self, doc, file_path: str) -> List[Dict[str, Any]]:
+        """Extract figure information from the PDF and save images to disk for frontend display.
+
+        Heuristics:
+        - Save embedded images per page
+        - Build a simple caption index using page text blocks
+        - Try to detect labels like "Figure 1.3" or "Fig. 2"
+        """
         
+
+        figures: List[Dict[str, Any]] = []
+        pdf_path = pathlib.Path(file_path)
+        stem = pdf_path.stem
+
+        # Directory to store extracted assets: uploads/<stem>/figures
+        upload_dir = pathlib.Path(settings.upload_dir)
+        asset_dir = upload_dir / stem / "figures"
+        asset_dir.mkdir(parents=True, exist_ok=True)
+
+        figure_label_re = re.compile(r"\bfig(?:ure)?\.?\s*\d+(?:\.\d+)*", re.IGNORECASE)
+
         for page_num in range(len(doc)):
             try:
                 page = doc.load_page(page_num)
-                image_list = page.get_images()
-                
+                # Get all images with full data to access xref
+                image_list = page.get_images(full=True)
+
+                # Attempt to find figure captions on the page (use blocks to preserve local grouping)
+                caption_candidates: List[str] = []
+                blocks = page.get_text("blocks") or []
+                for b in blocks:
+                    try:
+                        text = (b[4] if len(b) > 4 else "") or ""
+                        if not text:
+                            continue
+                        lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
+                        for ln in lines:
+                            if ln.lower().startswith("figure") or ln.lower().startswith("fig ") or ln.lower().startswith("fig."):
+                                caption_candidates.append(ln)
+                    except Exception:
+                        continue
+
                 for img_idx, img in enumerate(image_list):
-                    figure_data = {
-                        "page": page_num + 1,
-                        "image_index": img_idx,
-                        "bbox": img[0],  # bounding box
-                        "width": img[2],
-                        "height": img[3]
-                    }
-                    figures.append(figure_data)
-                    
+                    try:
+                        xref = img[0]
+                        pix = fitz.Pixmap(doc, xref)
+                        # Save as PNG
+                        file_name = f"page{page_num+1}_img{img_idx+1}.png"
+                        file_path_out = asset_dir / file_name
+                        if pix.n - pix.alpha >= 4:  # CMYK: convert to RGB
+                            pix = fitz.Pixmap(fitz.csRGB, pix)
+                        pix.save(str(file_path_out))
+                        pix = None
+
+                        web_path = f"/uploads/{stem}/figures/{file_name}"
+
+                        # Extract first label match from any candidate
+                        label = None
+                        for cap in caption_candidates:
+                            m = figure_label_re.search(cap)
+                            if m:
+                                label = m.group(0)
+                                break
+
+                        figure_data = {
+                            "page": page_num + 1,
+                            "image_index": img_idx + 1,
+                            "xref": xref,
+                            "width": img[2],
+                            "height": img[3],
+                            "path": str(file_path_out),
+                            "url": web_path,
+                            "captions": caption_candidates,
+                            "label": label,
+                        }
+                        figures.append(figure_data)
+                    except Exception as img_err:
+                        logger.warning(f"Error saving image {img_idx} on page {page_num + 1}: {img_err}")
+                        continue
             except Exception as e:
                 logger.warning(f"Error extracting figures from page {page_num + 1}: {str(e)}")
                 continue
-        
+
         return figures
     
     def _create_documents(self, text_content: str, metadata: Dict[str, Any]) -> List[Document]:
