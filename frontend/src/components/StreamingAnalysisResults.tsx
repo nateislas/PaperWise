@@ -55,6 +55,7 @@ const StreamingAnalysisResults: React.FC<StreamingAnalysisResultsProps> = ({
   
   const eventSourceRef = useRef<EventSource | null>(null);
   const analysisIdRef = useRef<string | null>(null);
+  const isStreamingRef = useRef(false);
 
   const handleStreamChunk = useCallback((chunk: StreamChunk) => {
     switch (chunk.type) {
@@ -111,9 +112,10 @@ const StreamingAnalysisResults: React.FC<StreamingAnalysisResultsProps> = ({
   }, [onComplete, onError]);
 
   const startStreaming = useCallback(async () => {
-    if (isStreaming) return;
+    if (isStreaming || isStreamingRef.current) return;
     
     setIsStreaming(true);
+    isStreamingRef.current = true;
     setError(null);
     setProgress(0);
     setStatus('Initializing analysis...');
@@ -133,10 +135,16 @@ const StreamingAnalysisResults: React.FC<StreamingAnalysisResultsProps> = ({
     };
 
     try {
-      const response = await fetch('/api/v1/analyze/stream', {
+      // Bypass CRA proxy for streaming to avoid buffering issues
+      const streamUrl = process.env.NODE_ENV === 'development' 
+        ? 'http://localhost:8000/api/v1/analyze/stream'
+        : '/api/v1/analyze/stream';
+        
+      const response = await fetch(streamUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'text/event-stream',
         },
         body: JSON.stringify({
           file_id: fileId,
@@ -145,9 +153,12 @@ const StreamingAnalysisResults: React.FC<StreamingAnalysisResultsProps> = ({
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorText = await response.text();
+        throw new Error(`HTTP error! status: ${response.status}, body: ${errorText}`);
       }
 
+      console.log('🔗 Stream response received:', response.status, response.headers.get('content-type'));
+      
       const reader = response.body?.getReader();
       if (!reader) {
         throw new Error('No response body');
@@ -161,7 +172,9 @@ const StreamingAnalysisResults: React.FC<StreamingAnalysisResultsProps> = ({
         
         if (done) break;
         
-        buffer += decoder.decode(value, { stream: true });
+        const chunk = decoder.decode(value, { stream: true });
+        console.log('📦 Raw chunk received:', chunk.length, 'bytes');
+        buffer += chunk;
         const lines = buffer.split('\n');
         buffer = lines.pop() || '';
 
@@ -169,6 +182,7 @@ const StreamingAnalysisResults: React.FC<StreamingAnalysisResultsProps> = ({
           if (line.startsWith('data: ')) {
             try {
               const data = JSON.parse(line.slice(6));
+              console.log('📥 Received stream chunk:', data.type, data.progress || 'N/A');
               handleStreamChunk(data);
             } catch (e) {
               console.warn('Failed to parse stream chunk:', line);
@@ -181,6 +195,7 @@ const StreamingAnalysisResults: React.FC<StreamingAnalysisResultsProps> = ({
       onError?.(err.message || 'Streaming failed');
     } finally {
       setIsStreaming(false);
+      isStreamingRef.current = false;
     }
   }, [fileId, isStreaming, onError, handleStreamChunk]);
 
@@ -190,6 +205,7 @@ const StreamingAnalysisResults: React.FC<StreamingAnalysisResultsProps> = ({
       eventSourceRef.current = null;
     }
     setIsStreaming(false);
+    isStreamingRef.current = false;
     setStatus('Analysis stopped');
   };
 

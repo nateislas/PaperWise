@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import FileUpload from '../components/FileUpload';
 import StreamingAnalysisResults from '../components/StreamingAnalysisResults';
-import { Target, TrendingUp, Lightbulb } from 'lucide-react';
+
 import axios from 'axios';
 
 const PaperAnalysis: React.FC = () => {
@@ -88,44 +88,7 @@ const PaperAnalysis: React.FC = () => {
         </div>
       )}
 
-      {/* Features Section */}
-      <div className="grid md:grid-cols-3 gap-6 mt-12">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center space-x-3 mb-4">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <Target className="h-6 w-6 text-blue-600" />
-            </div>
-            <h3 className="text-lg font-semibold text-gray-900">Methodology Analysis</h3>
-          </div>
-          <p className="text-gray-600">
-            Deep evaluation of experimental design, statistical approaches, and research methods.
-          </p>
-        </div>
 
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center space-x-3 mb-4">
-            <div className="p-2 bg-green-100 rounded-lg">
-              <TrendingUp className="h-6 w-6 text-green-600" />
-            </div>
-            <h3 className="text-lg font-semibold text-gray-900">Results Interpretation</h3>
-          </div>
-          <p className="text-gray-600">
-            Comprehensive analysis of findings, statistical significance, and data quality.
-          </p>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center space-x-3 mb-4">
-            <div className="p-2 bg-purple-100 rounded-lg">
-              <Lightbulb className="h-6 w-6 text-purple-600" />
-            </div>
-            <h3 className="text-lg font-semibold text-gray-900">Context & Implications</h3>
-          </div>
-          <p className="text-gray-600">
-            Broader academic context, field contributions, and future research directions.
-          </p>
-        </div>
-      </div>
     </div>
   );
 };

@@ -189,7 +189,7 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({ analysis, isLoading }
             <BookOpen className="h-5 w-5 text-primary-600" />
             <h2 className="text-xl font-semibold text-gray-900">Executive Summary</h2>
           </div>
-          <div className="prose prose-sm max-w-none">
+          <div className="prose prose-base max-w-none">
             <ReactMarkdown>{executive_summary}</ReactMarkdown>
           </div>
         </div>
@@ -206,7 +206,7 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({ analysis, isLoading }
             {novelty_assessment.key_innovation && (
               <div>
                 <h3 className="text-lg font-medium text-gray-800 mb-2">Key Innovation</h3>
-                <div className="prose prose-sm max-w-none">
+                <div className="prose prose-base max-w-none">
                   <ReactMarkdown>{novelty_assessment.key_innovation}</ReactMarkdown>
                 </div>
               </div>
@@ -216,7 +216,7 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({ analysis, isLoading }
                 <h3 className="text-lg font-medium text-gray-800 mb-2">Incremental Advances</h3>
                 <ul className="space-y-1">
                   {novelty_assessment.incremental_advances.map((advance: string, index: number) => (
-                    <li key={index} className="text-sm text-gray-700">• {advance}</li>
+                    <li key={index} className="text-base text-gray-700">• {advance}</li>
                   ))}
                 </ul>
               </div>
@@ -225,13 +225,13 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({ analysis, isLoading }
               {novelty_assessment.novelty_score && (
                 <div className="p-3 rounded border bg-gray-50">
                   <div className="text-xs font-semibold text-gray-600 mb-1">Novelty Score</div>
-                  <div className="text-sm font-medium text-gray-900">{novelty_assessment.novelty_score}</div>
+                  <div className="text-base font-medium text-gray-900">{novelty_assessment.novelty_score}</div>
                 </div>
               )}
               {novelty_assessment.justification && (
                 <div className="p-3 rounded border bg-gray-50">
                   <div className="text-xs font-semibold text-gray-600 mb-1">Justification</div>
-                  <div className="text-sm text-gray-800">{novelty_assessment.justification}</div>
+                  <div className="text-base text-gray-800">{novelty_assessment.justification}</div>
                 </div>
               )}
             </div>
@@ -250,7 +250,7 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({ analysis, isLoading }
             {gap_analysis.problem_statement && (
               <div>
                 <h3 className="text-lg font-medium text-gray-800 mb-2">Problem Statement</h3>
-                <div className="prose prose-sm max-w-none">
+                <div className="prose prose-base max-w-none">
                   <ReactMarkdown>{gap_analysis.problem_statement}</ReactMarkdown>
                 </div>
               </div>
@@ -258,7 +258,7 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({ analysis, isLoading }
             {gap_analysis.motivation && (
               <div>
                 <h3 className="text-lg font-medium text-gray-800 mb-2">Motivation</h3>
-                <div className="prose prose-sm max-w-none">
+                <div className="prose prose-base max-w-none">
                   <ReactMarkdown>{gap_analysis.motivation}</ReactMarkdown>
                 </div>
               </div>
@@ -266,7 +266,7 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({ analysis, isLoading }
             {gap_analysis.scope && (
               <div>
                 <h3 className="text-lg font-medium text-gray-800 mb-2">Scope Limitations</h3>
-                <div className="prose prose-sm max-w-none">
+                <div className="prose prose-base max-w-none">
                   <ReactMarkdown>{gap_analysis.scope}</ReactMarkdown>
                 </div>
               </div>
@@ -286,7 +286,7 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({ analysis, isLoading }
             {methodological_evaluation.approach_strength && (
               <div>
                 <h3 className="text-lg font-medium text-gray-800 mb-2">Approach Strengths</h3>
-                <div className="prose prose-sm max-w-none">
+                <div className="prose prose-base max-w-none">
                   <ReactMarkdown>{methodological_evaluation.approach_strength}</ReactMarkdown>
                 </div>
               </div>
@@ -296,7 +296,7 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({ analysis, isLoading }
                 <h3 className="text-lg font-medium text-gray-800 mb-2">Potential Issues</h3>
                 <ul className="space-y-1">
                   {methodological_evaluation.potential_issues.map((issue: string, index: number) => (
-                    <li key={index} className="text-sm text-gray-700">• {issue}</li>
+                    <li key={index} className="text-base text-gray-700">• {issue}</li>
                   ))}
                 </ul>
               </div>
@@ -305,13 +305,13 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({ analysis, isLoading }
               {methodological_evaluation.rigor_assessment && (
                 <div className="p-3 rounded border bg-gray-50">
                   <div className="text-xs font-semibold text-gray-600 mb-1">Rigor Assessment</div>
-                  <div className="text-sm font-medium text-gray-900">{methodological_evaluation.rigor_assessment}</div>
+                  <div className="text-base font-medium text-gray-900">{methodological_evaluation.rigor_assessment}</div>
                 </div>
               )}
               {methodological_evaluation.reproducibility && (
                 <div className="p-3 rounded border bg-gray-50">
                   <div className="text-xs font-semibold text-gray-600 mb-1">Reproducibility</div>
-                  <div className="text-sm text-gray-800">{methodological_evaluation.reproducibility}</div>
+                  <div className="text-base text-gray-800">{methodological_evaluation.reproducibility}</div>
                 </div>
               )}
             </div>
@@ -330,7 +330,7 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({ analysis, isLoading }
             {evidence_quality.empirical_support && (
               <div>
                 <h3 className="text-lg font-medium text-gray-800 mb-2">Empirical Support</h3>
-                <div className="prose prose-sm max-w-none">
+                <div className="prose prose-base max-w-none">
                   <ReactMarkdown>{evidence_quality.empirical_support}</ReactMarkdown>
                 </div>
               </div>
@@ -340,7 +340,7 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({ analysis, isLoading }
                 <h3 className="text-lg font-medium text-gray-800 mb-2">Key Results</h3>
                 <ul className="space-y-1">
                   {evidence_quality.key_results.map((result: string, index: number) => (
-                    <li key={index} className="text-sm text-gray-700">• {result}</li>
+                    <li key={index} className="text-base text-gray-700">• {result}</li>
                   ))}
                 </ul>
               </div>
@@ -349,13 +349,13 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({ analysis, isLoading }
               {evidence_quality.statistical_significance && (
                 <div className="p-3 rounded border bg-gray-50">
                   <div className="text-xs font-semibold text-gray-600 mb-1">Statistical Significance</div>
-                  <div className="text-sm text-gray-800">{evidence_quality.statistical_significance}</div>
+                  <div className="text-base text-gray-800">{evidence_quality.statistical_significance}</div>
                 </div>
               )}
               {evidence_quality.baseline_comparison && (
                 <div className="p-3 rounded border bg-gray-50">
                   <div className="text-xs font-semibold text-gray-600 mb-1">Baseline Comparison</div>
-                  <div className="text-sm text-gray-800">{evidence_quality.baseline_comparison}</div>
+                  <div className="text-base text-gray-800">{evidence_quality.baseline_comparison}</div>
                 </div>
               )}
             </div>
@@ -374,7 +374,7 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({ analysis, isLoading }
             {impact_assessment.theoretical_contribution && (
               <div>
                 <h3 className="text-lg font-medium text-gray-800 mb-2">Theoretical Contribution</h3>
-                <div className="prose prose-sm max-w-none">
+                <div className="prose prose-base max-w-none">
                   <ReactMarkdown>{impact_assessment.theoretical_contribution}</ReactMarkdown>
                 </div>
               </div>
@@ -382,7 +382,7 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({ analysis, isLoading }
             {impact_assessment.practical_significance && (
               <div>
                 <h3 className="text-lg font-medium text-gray-800 mb-2">Practical Significance</h3>
-                <div className="prose prose-sm max-w-none">
+                <div className="prose prose-base max-w-none">
                   <ReactMarkdown>{impact_assessment.practical_significance}</ReactMarkdown>
                 </div>
               </div>
@@ -390,7 +390,7 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({ analysis, isLoading }
             {impact_assessment.field_impact && (
               <div>
                 <h3 className="text-lg font-medium text-gray-800 mb-2">Field Impact</h3>
-                <div className="prose prose-sm max-w-none">
+                <div className="prose prose-base max-w-none">
                   <ReactMarkdown>{impact_assessment.field_impact}</ReactMarkdown>
                 </div>
               </div>
@@ -412,7 +412,7 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({ analysis, isLoading }
                 <h3 className="text-lg font-medium text-gray-800 mb-2">Immediate Extensions</h3>
                 <ul className="space-y-1">
                   {research_opportunities.immediate_extensions.map((extension: string, index: number) => (
-                    <li key={index} className="text-sm text-gray-700">• {extension}</li>
+                    <li key={index} className="text-base text-gray-700">• {extension}</li>
                   ))}
                 </ul>
               </div>
@@ -422,7 +422,7 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({ analysis, isLoading }
                 <h3 className="text-lg font-medium text-gray-800 mb-2">Broader Directions</h3>
                 <ul className="space-y-1">
                   {research_opportunities.broader_directions.map((direction: string, index: number) => (
-                    <li key={index} className="text-sm text-gray-700">• {direction}</li>
+                    <li key={index} className="text-base text-gray-700">• {direction}</li>
                   ))}
                 </ul>
               </div>
@@ -432,7 +432,7 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({ analysis, isLoading }
                 <h3 className="text-lg font-medium text-gray-800 mb-2">Open Questions</h3>
                 <ul className="space-y-1">
                   {research_opportunities.open_questions.map((question: string, index: number) => (
-                    <li key={index} className="text-sm text-gray-700">• {question}</li>
+                    <li key={index} className="text-base text-gray-700">• {question}</li>
                   ))}
                 </ul>
               </div>
@@ -453,13 +453,13 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({ analysis, isLoading }
               {implementation_guide.complexity && (
                 <div className="p-3 rounded border bg-gray-50">
                   <div className="text-xs font-semibold text-gray-600 mb-1">Complexity</div>
-                  <div className="text-sm font-medium text-gray-900">{implementation_guide.complexity}</div>
+                  <div className="text-base font-medium text-gray-900">{implementation_guide.complexity}</div>
                 </div>
               )}
               {implementation_guide.estimated_effort && (
                 <div className="p-3 rounded border bg-gray-50">
                   <div className="text-xs font-semibold text-gray-600 mb-1">Estimated Effort</div>
-                  <div className="text-sm text-gray-800">{implementation_guide.estimated_effort}</div>
+                  <div className="text-base text-gray-800">{implementation_guide.estimated_effort}</div>
                 </div>
               )}
             </div>
@@ -468,7 +468,7 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({ analysis, isLoading }
                 <h3 className="text-lg font-medium text-gray-800 mb-2">Requirements</h3>
                 <ul className="space-y-1">
                   {implementation_guide.requirements.map((req: string, index: number) => (
-                    <li key={index} className="text-sm text-gray-700">• {req}</li>
+                    <li key={index} className="text-base text-gray-700">• {req}</li>
                   ))}
                 </ul>
               </div>
@@ -478,7 +478,7 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({ analysis, isLoading }
                 <h3 className="text-lg font-medium text-gray-800 mb-2">Missing Details</h3>
                 <ul className="space-y-1">
                   {implementation_guide.missing_details.map((detail: string, index: number) => (
-                    <li key={index} className="text-sm text-gray-700">• {detail}</li>
+                    <li key={index} className="text-base text-gray-700">• {detail}</li>
                   ))}
                 </ul>
               </div>
@@ -500,7 +500,7 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({ analysis, isLoading }
                 <h3 className="text-lg font-medium text-gray-800 mb-2">Major Strengths</h3>
                 <ul className="space-y-1">
                   {critical_review.major_strengths.map((strength: string, index: number) => (
-                    <li key={index} className="text-sm text-gray-700">• {strength}</li>
+                    <li key={index} className="text-base text-gray-700">• {strength}</li>
                   ))}
                 </ul>
               </div>
@@ -510,7 +510,7 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({ analysis, isLoading }
                 <h3 className="text-lg font-medium text-gray-800 mb-2">Major Concerns</h3>
                 <ul className="space-y-1">
                   {critical_review.major_concerns.map((concern: string, index: number) => (
-                    <li key={index} className="text-sm text-gray-700">• {concern}</li>
+                    <li key={index} className="text-base text-gray-700">• {concern}</li>
                   ))}
                 </ul>
               </div>
@@ -520,7 +520,7 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({ analysis, isLoading }
                 <h3 className="text-lg font-medium text-gray-800 mb-2">Alternative Approaches</h3>
                 <ul className="space-y-1">
                   {critical_review.alternative_approaches.map((approach: string, index: number) => (
-                    <li key={index} className="text-sm text-gray-700">• {approach}</li>
+                    <li key={index} className="text-base text-gray-700">• {approach}</li>
                   ))}
                 </ul>
               </div>
@@ -528,7 +528,7 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({ analysis, isLoading }
             {critical_review.robustness && (
               <div>
                 <h3 className="text-lg font-medium text-gray-800 mb-2">Robustness Assessment</h3>
-                <div className="prose prose-sm max-w-none">
+                <div className="prose prose-base max-w-none">
                   <ReactMarkdown>{critical_review.robustness}</ReactMarkdown>
                 </div>
               </div>
