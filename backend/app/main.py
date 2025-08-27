@@ -1,6 +1,7 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 import os
 from typing import Optional
 import aiofiles
@@ -27,6 +28,13 @@ app.add_middleware(
 
 # Include routers
 app.include_router(analysis.router, prefix="/api/v1")
+
+# Serve uploaded files (including extracted figure images)
+app.mount(
+    "/uploads",
+    StaticFiles(directory=settings.upload_dir),
+    name="uploads",
+)
 
 @app.get("/")
 async def root():
