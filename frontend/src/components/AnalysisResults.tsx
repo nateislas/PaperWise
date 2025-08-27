@@ -80,7 +80,7 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({ analysis, isLoading }
   
   // Use safe destructuring with default values for new structure
   const { 
-    executive_summary = null,
+    executive_summary = null, 
     novelty_assessment = null,
     gap_analysis = null,
     methodological_evaluation = null,

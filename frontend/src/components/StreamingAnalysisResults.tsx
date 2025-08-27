@@ -14,7 +14,6 @@ import AnalysisResults from './AnalysisResults';
 
 interface StreamingAnalysisResultsProps {
   fileId: string;
-  userQuery?: string;
   onComplete?: (analysis: any) => void;
   onError?: (error: string) => void;
 }
@@ -31,7 +30,6 @@ interface StreamChunk {
 
 const StreamingAnalysisResults: React.FC<StreamingAnalysisResultsProps> = ({
   fileId,
-  userQuery,
   onComplete,
   onError
 }) => {
@@ -142,7 +140,6 @@ const StreamingAnalysisResults: React.FC<StreamingAnalysisResultsProps> = ({
         },
         body: JSON.stringify({
           file_id: fileId,
-          query: userQuery || undefined,
           analysis_type: 'comprehensive'
         }),
       });
@@ -185,7 +182,7 @@ const StreamingAnalysisResults: React.FC<StreamingAnalysisResultsProps> = ({
     } finally {
       setIsStreaming(false);
     }
-  }, [fileId, userQuery, isStreaming, onError, handleStreamChunk]);
+  }, [fileId, isStreaming, onError, handleStreamChunk]);
 
   const stopStreaming = () => {
     if (eventSourceRef.current) {

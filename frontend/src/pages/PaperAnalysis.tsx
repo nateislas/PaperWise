@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import FileUpload from '../components/FileUpload';
 import StreamingAnalysisResults from '../components/StreamingAnalysisResults';
-import { Zap, Target, TrendingUp, Lightbulb } from 'lucide-react';
+import { Target, TrendingUp, Lightbulb } from 'lucide-react';
 import axios from 'axios';
 
 const PaperAnalysis: React.FC = () => {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [analysis, setAnalysis] = useState<any>(null);
-  const [userQuery, setUserQuery] = useState('');
+
   const [fileId, setFileId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -75,47 +75,13 @@ const PaperAnalysis: React.FC = () => {
         />
       </div>
 
-      {/* Analysis Configuration */}
-      {uploadedFile && fileId && (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Analysis Configuration</h2>
-          
-          {/* Analysis Mode Info */}
-          <div className="mb-6">
-            <div className="flex items-center space-x-2 px-4 py-2 rounded-md border border-primary-600 bg-primary-50 text-primary-700">
-              <Zap className="h-4 w-4" />
-              <span className="font-medium">Real-time Streaming Analysis</span>
-            </div>
-            <p className="text-sm text-gray-600 mt-2">
-              Real-time streaming analysis with live progress updates and faster initial response.
-            </p>
-          </div>
 
-          {/* Query Input */}
-          <div className="mb-6">
-            <label htmlFor="query" className="block text-sm font-medium text-gray-700 mb-2">
-              Specific Questions (Optional)
-            </label>
-            <div className="flex space-x-2">
-              <input
-                type="text"
-                id="query"
-                value={userQuery}
-                onChange={(e) => setUserQuery(e.target.value)}
-                placeholder="Ask specific questions about the paper..."
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-              />
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Analysis Results */}
       {uploadedFile && fileId && (
         <div className="mb-8">
           <StreamingAnalysisResults
             fileId={fileId}
-            userQuery={userQuery}
             onComplete={handleStreamingComplete}
             onError={handleStreamingError}
           />
