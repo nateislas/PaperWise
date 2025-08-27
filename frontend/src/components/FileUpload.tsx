@@ -1,19 +1,21 @@
 import React, { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { Upload, FileText, X, CheckCircle } from 'lucide-react';
+import { Upload, FileText, X, CheckCircle, AlertTriangle } from 'lucide-react';
 
 interface FileUploadProps {
   onFileUpload: (file: File) => void;
   onFileRemove: () => void;
   uploadedFile: File | null;
   isUploading: boolean;
+  error?: string | null;
 }
 
 const FileUpload: React.FC<FileUploadProps> = ({
   onFileUpload,
   onFileRemove,
   uploadedFile,
-  isUploading
+  isUploading,
+  error
 }) => {
   const [dragOver, setDragOver] = useState(false);
 
@@ -44,7 +46,21 @@ const FileUpload: React.FC<FileUploadProps> = ({
   };
 
   return (
-    <div className="w-full">
+    <div className="w-full space-y-4">
+      {/* Error Display */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="flex items-center space-x-2">
+            <AlertTriangle className="h-5 w-5 text-red-500" />
+            <div>
+              <h3 className="text-sm font-medium text-red-800">Upload Error</h3>
+              <p className="text-sm text-red-700 mt-1">{error}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* File Upload Area */}
       {!uploadedFile ? (
         <div
           {...getRootProps()}
