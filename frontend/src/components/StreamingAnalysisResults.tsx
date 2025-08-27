@@ -251,16 +251,27 @@ const StreamingAnalysisResults: React.FC<StreamingAnalysisResultsProps> = ({
         const jsonData = JSON.parse(cleanedAnalysis);
         console.log('✅ Successfully parsed as JSON');
         
+        // Return the complete new structure with all sections
         return {
+          // New comprehensive analysis sections
           executive_summary: jsonData.executive_summary || '',
+          novelty_assessment: jsonData.novelty_assessment || null,
+          gap_analysis: jsonData.gap_analysis || null,
+          methodological_evaluation: jsonData.methodological_evaluation || null,
+          evidence_quality: jsonData.evidence_quality || null,
+          impact_assessment: jsonData.impact_assessment || null,
+          research_opportunities: jsonData.research_opportunities || null,
+          implementation_guide: jsonData.implementation_guide || null,
+          critical_review: jsonData.critical_review || null,
+          // Legacy fields for backward compatibility
           key_insights: jsonData.key_insights || [],
-          detailed_analysis: {
-            research_problem: jsonData.detailed_analysis?.research_problem || '',
-            methodology: jsonData.detailed_analysis?.methodology || '',
-            key_findings: jsonData.detailed_analysis?.key_findings || '',
-            context: jsonData.detailed_analysis?.context || '',
-            strengths_limitations: jsonData.detailed_analysis?.strengths_limitations || '',
-            future_directions: jsonData.detailed_analysis?.future_directions || ''
+          detailed_analysis: jsonData.detailed_analysis || {
+            research_problem: '',
+            methodology: '',
+            key_findings: '',
+            context: '',
+            strengths_limitations: '',
+            future_directions: ''
           },
           recommendations: jsonData.recommendations || null
         };
@@ -308,6 +319,9 @@ const StreamingAnalysisResults: React.FC<StreamingAnalysisResultsProps> = ({
     // Create structured analysis object
     const structuredAnalysis = {
       analysis_id: analysis.analysis_id,
+      field: analysis.field,
+      field_confidence: analysis.field_confidence,
+      sections: analysis.sections || [],
       analysis: parseComprehensiveAnalysis(analysis.comprehensive_analysis),
       metadata: analysis.metadata
     };

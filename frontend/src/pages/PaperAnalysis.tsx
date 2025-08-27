@@ -60,8 +60,7 @@ const PaperAnalysis: React.FC = () => {
           AI-Powered Research Paper Analysis
         </h1>
         <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-          Upload your research paper and get real-time streaming analysis with comprehensive insights, 
-          methodology evaluation, and contextual analysis powered by advanced AI.
+        Upload your research paper to PaperWise and get instant, in-depth analysis. Our AI agent goes beyond a simple summary, providing you with a critical breakdown of the methodology, key findings, and contributions to the field—just like a fellow researcher would.
         </p>
       </div>
 

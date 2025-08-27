@@ -53,8 +53,12 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({ analysis, isLoading }
   }
 
   // Handle the response structure from the backend
-  // Backend returns: { analysis_id, status, message, analysis: { comprehensive_analysis_data } }
   const comprehensive_analysis = analysis.analysis || analysis.comprehensive_analysis || analysis;
+  const detectedField: string | undefined = analysis.field || comprehensive_analysis.field;
+  const subfield: string | undefined = analysis.subfield || comprehensive_analysis.subfield;
+  const conferences: string[] | undefined = analysis.conferences || comprehensive_analysis.conferences;
+  const fieldConfidence: number | undefined = analysis.field_confidence || comprehensive_analysis.field_confidence;
+  const figureAssets: Array<{ page: number; image_index: number; url: string; captions?: string[] }> = analysis.figures || comprehensive_analysis.figures || [];
   
   // Add defensive checks to prevent destructuring errors
   if (!comprehensive_analysis || typeof comprehensive_analysis !== 'object') {
@@ -63,14 +67,29 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({ analysis, isLoading }
         <div className="text-center text-gray-600">
           <AlertTriangle className="h-8 w-8 mx-auto mb-2 text-yellow-500" />
           <p>Analysis data is not available or in an unexpected format.</p>
+          <div className="mt-4 text-left">
+            <p className="text-sm font-semibold">Debug Info:</p>
+            <pre className="text-xs bg-gray-100 p-2 rounded mt-2 overflow-auto">
+              {JSON.stringify(analysis, null, 2)}
+            </pre>
+          </div>
         </div>
       </div>
     );
   }
   
-  // Use safe destructuring with default values
+  // Use safe destructuring with default values for new structure
   const { 
-    executive_summary = null, 
+    executive_summary = null,
+    novelty_assessment = null,
+    gap_analysis = null,
+    methodological_evaluation = null,
+    evidence_quality = null,
+    impact_assessment = null,
+    research_opportunities = null,
+    implementation_guide = null,
+    critical_review = null,
+    // Legacy fields for backward compatibility
     detailed_analysis = null, 
     key_insights = [], 
     recommendations = null 
@@ -88,9 +107,18 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({ analysis, isLoading }
     ? { research_problem: detailed_analysis, methodology: '', key_findings: '', context: '', strengths_limitations: '', future_directions: '' }
     : detailed_analysis || { research_problem: '', methodology: '', key_findings: '', context: '', strengths_limitations: '', future_directions: '' };
 
-  // Generate table of contents
+  // Generate table of contents for new structure
   const sections = [
     { id: 'executive-summary', title: 'Executive Summary', icon: BookOpen, color: 'text-primary-600', hasContent: !!executive_summary },
+    { id: 'novelty-assessment', title: 'Novelty Assessment', icon: Zap, color: 'text-purple-600', hasContent: !!novelty_assessment },
+    { id: 'gap-analysis', title: 'Gap Analysis', icon: Target, color: 'text-blue-600', hasContent: !!gap_analysis },
+    { id: 'methodological-evaluation', title: 'Methodological Evaluation', icon: CheckCircle, color: 'text-green-600', hasContent: !!methodological_evaluation },
+    { id: 'evidence-quality', title: 'Evidence Quality', icon: AlertTriangle, color: 'text-orange-600', hasContent: !!evidence_quality },
+    { id: 'impact-assessment', title: 'Impact Assessment', icon: TrendingUp, color: 'text-indigo-600', hasContent: !!impact_assessment },
+    { id: 'research-opportunities', title: 'Research Opportunities', icon: Lightbulb, color: 'text-yellow-600', hasContent: !!research_opportunities },
+    { id: 'implementation-guide', title: 'Implementation Guide', icon: Users, color: 'text-gray-600', hasContent: !!implementation_guide },
+    { id: 'critical-review', title: 'Critical Review', icon: AlertTriangle, color: 'text-red-600', hasContent: !!critical_review },
+    // Legacy sections for backward compatibility
     { id: 'key-insights', title: 'Key Insights', icon: Lightbulb, color: 'text-yellow-600', hasContent: key_insights && key_insights.length > 0 },
     { id: 'detailed-analysis', title: 'Detailed Analysis', icon: Target, color: 'text-primary-600', hasContent: !!detailed_analysis && Object.values(detailedAnalysisSections).some((section: string) => section.length > 0) },
     { id: 'recommendations', title: 'Recommendations', icon: TrendingUp, color: 'text-green-600', hasContent: !!recommendations }
@@ -113,6 +141,16 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({ analysis, isLoading }
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-2xl font-bold text-gray-900">Research Paper Analysis</h1>
+          {detectedField && (
+            <div className="text-sm px-3 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+              {detectedField.toUpperCase()}{subfield && ` (${subfield})`} {typeof fieldConfidence === 'number' && `(${Math.round(fieldConfidence * 100)}%)`}
+              {conferences && conferences.length > 0 && (
+                <div className="text-xs mt-1">
+                  {conferences.slice(0, 2).join(', ')}
+                </div>
+              )}
+            </div>
+          )}
           <button
             onClick={() => setShowTableOfContents(!showTableOfContents)}
             className="flex items-center space-x-2 px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
@@ -142,6 +180,8 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({ analysis, isLoading }
         )}
       </div>
 
+
+
       {/* Executive Summary */}
       {executive_summary && (
         <div id="executive-summary" className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
@@ -155,7 +195,349 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({ analysis, isLoading }
         </div>
       )}
 
-      {/* Key Insights */}
+      {/* Novelty Assessment */}
+      {novelty_assessment && (
+        <div id="novelty-assessment" className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <div className="flex items-center space-x-2 mb-4">
+            <Zap className="h-5 w-5 text-purple-600" />
+            <h2 className="text-xl font-semibold text-gray-900">Novelty Assessment</h2>
+          </div>
+          <div className="space-y-4">
+            {novelty_assessment.key_innovation && (
+              <div>
+                <h3 className="text-lg font-medium text-gray-800 mb-2">Key Innovation</h3>
+                <div className="prose prose-sm max-w-none">
+                  <ReactMarkdown>{novelty_assessment.key_innovation}</ReactMarkdown>
+                </div>
+              </div>
+            )}
+            {novelty_assessment.incremental_advances && novelty_assessment.incremental_advances.length > 0 && (
+              <div>
+                <h3 className="text-lg font-medium text-gray-800 mb-2">Incremental Advances</h3>
+                <ul className="space-y-1">
+                  {novelty_assessment.incremental_advances.map((advance: string, index: number) => (
+                    <li key={index} className="text-sm text-gray-700">• {advance}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            <div className="grid md:grid-cols-2 gap-4">
+              {novelty_assessment.novelty_score && (
+                <div className="p-3 rounded border bg-gray-50">
+                  <div className="text-xs font-semibold text-gray-600 mb-1">Novelty Score</div>
+                  <div className="text-sm font-medium text-gray-900">{novelty_assessment.novelty_score}</div>
+                </div>
+              )}
+              {novelty_assessment.justification && (
+                <div className="p-3 rounded border bg-gray-50">
+                  <div className="text-xs font-semibold text-gray-600 mb-1">Justification</div>
+                  <div className="text-sm text-gray-800">{novelty_assessment.justification}</div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Gap Analysis */}
+      {gap_analysis && (
+        <div id="gap-analysis" className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <div className="flex items-center space-x-2 mb-4">
+            <Target className="h-5 w-5 text-blue-600" />
+            <h2 className="text-xl font-semibold text-gray-900">Gap Analysis</h2>
+          </div>
+          <div className="space-y-4">
+            {gap_analysis.problem_statement && (
+              <div>
+                <h3 className="text-lg font-medium text-gray-800 mb-2">Problem Statement</h3>
+                <div className="prose prose-sm max-w-none">
+                  <ReactMarkdown>{gap_analysis.problem_statement}</ReactMarkdown>
+                </div>
+              </div>
+            )}
+            {gap_analysis.motivation && (
+              <div>
+                <h3 className="text-lg font-medium text-gray-800 mb-2">Motivation</h3>
+                <div className="prose prose-sm max-w-none">
+                  <ReactMarkdown>{gap_analysis.motivation}</ReactMarkdown>
+                </div>
+              </div>
+            )}
+            {gap_analysis.scope && (
+              <div>
+                <h3 className="text-lg font-medium text-gray-800 mb-2">Scope Limitations</h3>
+                <div className="prose prose-sm max-w-none">
+                  <ReactMarkdown>{gap_analysis.scope}</ReactMarkdown>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Methodological Evaluation */}
+      {methodological_evaluation && (
+        <div id="methodological-evaluation" className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <div className="flex items-center space-x-2 mb-4">
+            <CheckCircle className="h-5 w-5 text-green-600" />
+            <h2 className="text-xl font-semibold text-gray-900">Methodological Evaluation</h2>
+          </div>
+          <div className="space-y-4">
+            {methodological_evaluation.approach_strength && (
+              <div>
+                <h3 className="text-lg font-medium text-gray-800 mb-2">Approach Strengths</h3>
+                <div className="prose prose-sm max-w-none">
+                  <ReactMarkdown>{methodological_evaluation.approach_strength}</ReactMarkdown>
+                </div>
+              </div>
+            )}
+            {methodological_evaluation.potential_issues && methodological_evaluation.potential_issues.length > 0 && (
+              <div>
+                <h3 className="text-lg font-medium text-gray-800 mb-2">Potential Issues</h3>
+                <ul className="space-y-1">
+                  {methodological_evaluation.potential_issues.map((issue: string, index: number) => (
+                    <li key={index} className="text-sm text-gray-700">• {issue}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            <div className="grid md:grid-cols-2 gap-4">
+              {methodological_evaluation.rigor_assessment && (
+                <div className="p-3 rounded border bg-gray-50">
+                  <div className="text-xs font-semibold text-gray-600 mb-1">Rigor Assessment</div>
+                  <div className="text-sm font-medium text-gray-900">{methodological_evaluation.rigor_assessment}</div>
+                </div>
+              )}
+              {methodological_evaluation.reproducibility && (
+                <div className="p-3 rounded border bg-gray-50">
+                  <div className="text-xs font-semibold text-gray-600 mb-1">Reproducibility</div>
+                  <div className="text-sm text-gray-800">{methodological_evaluation.reproducibility}</div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Evidence Quality */}
+      {evidence_quality && (
+        <div id="evidence-quality" className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <div className="flex items-center space-x-2 mb-4">
+            <AlertTriangle className="h-5 w-5 text-orange-600" />
+            <h2 className="text-xl font-semibold text-gray-900">Evidence Quality</h2>
+          </div>
+          <div className="space-y-4">
+            {evidence_quality.empirical_support && (
+              <div>
+                <h3 className="text-lg font-medium text-gray-800 mb-2">Empirical Support</h3>
+                <div className="prose prose-sm max-w-none">
+                  <ReactMarkdown>{evidence_quality.empirical_support}</ReactMarkdown>
+                </div>
+              </div>
+            )}
+            {evidence_quality.key_results && evidence_quality.key_results.length > 0 && (
+              <div>
+                <h3 className="text-lg font-medium text-gray-800 mb-2">Key Results</h3>
+                <ul className="space-y-1">
+                  {evidence_quality.key_results.map((result: string, index: number) => (
+                    <li key={index} className="text-sm text-gray-700">• {result}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            <div className="grid md:grid-cols-2 gap-4">
+              {evidence_quality.statistical_significance && (
+                <div className="p-3 rounded border bg-gray-50">
+                  <div className="text-xs font-semibold text-gray-600 mb-1">Statistical Significance</div>
+                  <div className="text-sm text-gray-800">{evidence_quality.statistical_significance}</div>
+                </div>
+              )}
+              {evidence_quality.baseline_comparison && (
+                <div className="p-3 rounded border bg-gray-50">
+                  <div className="text-xs font-semibold text-gray-600 mb-1">Baseline Comparison</div>
+                  <div className="text-sm text-gray-800">{evidence_quality.baseline_comparison}</div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Impact Assessment */}
+      {impact_assessment && (
+        <div id="impact-assessment" className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <div className="flex items-center space-x-2 mb-4">
+            <TrendingUp className="h-5 w-5 text-indigo-600" />
+            <h2 className="text-xl font-semibold text-gray-900">Impact Assessment</h2>
+          </div>
+          <div className="space-y-4">
+            {impact_assessment.theoretical_contribution && (
+              <div>
+                <h3 className="text-lg font-medium text-gray-800 mb-2">Theoretical Contribution</h3>
+                <div className="prose prose-sm max-w-none">
+                  <ReactMarkdown>{impact_assessment.theoretical_contribution}</ReactMarkdown>
+                </div>
+              </div>
+            )}
+            {impact_assessment.practical_significance && (
+              <div>
+                <h3 className="text-lg font-medium text-gray-800 mb-2">Practical Significance</h3>
+                <div className="prose prose-sm max-w-none">
+                  <ReactMarkdown>{impact_assessment.practical_significance}</ReactMarkdown>
+                </div>
+              </div>
+            )}
+            {impact_assessment.field_impact && (
+              <div>
+                <h3 className="text-lg font-medium text-gray-800 mb-2">Field Impact</h3>
+                <div className="prose prose-sm max-w-none">
+                  <ReactMarkdown>{impact_assessment.field_impact}</ReactMarkdown>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Research Opportunities */}
+      {research_opportunities && (
+        <div id="research-opportunities" className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <div className="flex items-center space-x-2 mb-4">
+            <Lightbulb className="h-5 w-5 text-yellow-600" />
+            <h2 className="text-xl font-semibold text-gray-900">Research Opportunities</h2>
+          </div>
+          <div className="space-y-4">
+            {research_opportunities.immediate_extensions && research_opportunities.immediate_extensions.length > 0 && (
+              <div>
+                <h3 className="text-lg font-medium text-gray-800 mb-2">Immediate Extensions</h3>
+                <ul className="space-y-1">
+                  {research_opportunities.immediate_extensions.map((extension: string, index: number) => (
+                    <li key={index} className="text-sm text-gray-700">• {extension}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {research_opportunities.broader_directions && research_opportunities.broader_directions.length > 0 && (
+              <div>
+                <h3 className="text-lg font-medium text-gray-800 mb-2">Broader Directions</h3>
+                <ul className="space-y-1">
+                  {research_opportunities.broader_directions.map((direction: string, index: number) => (
+                    <li key={index} className="text-sm text-gray-700">• {direction}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {research_opportunities.open_questions && research_opportunities.open_questions.length > 0 && (
+              <div>
+                <h3 className="text-lg font-medium text-gray-800 mb-2">Open Questions</h3>
+                <ul className="space-y-1">
+                  {research_opportunities.open_questions.map((question: string, index: number) => (
+                    <li key={index} className="text-sm text-gray-700">• {question}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Implementation Guide */}
+      {implementation_guide && (
+        <div id="implementation-guide" className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <div className="flex items-center space-x-2 mb-4">
+            <Users className="h-5 w-5 text-gray-600" />
+            <h2 className="text-xl font-semibold text-gray-900">Implementation Guide</h2>
+          </div>
+          <div className="space-y-4">
+            <div className="grid md:grid-cols-2 gap-4">
+              {implementation_guide.complexity && (
+                <div className="p-3 rounded border bg-gray-50">
+                  <div className="text-xs font-semibold text-gray-600 mb-1">Complexity</div>
+                  <div className="text-sm font-medium text-gray-900">{implementation_guide.complexity}</div>
+                </div>
+              )}
+              {implementation_guide.estimated_effort && (
+                <div className="p-3 rounded border bg-gray-50">
+                  <div className="text-xs font-semibold text-gray-600 mb-1">Estimated Effort</div>
+                  <div className="text-sm text-gray-800">{implementation_guide.estimated_effort}</div>
+                </div>
+              )}
+            </div>
+            {implementation_guide.requirements && implementation_guide.requirements.length > 0 && (
+              <div>
+                <h3 className="text-lg font-medium text-gray-800 mb-2">Requirements</h3>
+                <ul className="space-y-1">
+                  {implementation_guide.requirements.map((req: string, index: number) => (
+                    <li key={index} className="text-sm text-gray-700">• {req}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {implementation_guide.missing_details && implementation_guide.missing_details.length > 0 && (
+              <div>
+                <h3 className="text-lg font-medium text-gray-800 mb-2">Missing Details</h3>
+                <ul className="space-y-1">
+                  {implementation_guide.missing_details.map((detail: string, index: number) => (
+                    <li key={index} className="text-sm text-gray-700">• {detail}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Critical Review */}
+      {critical_review && (
+        <div id="critical-review" className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <div className="flex items-center space-x-2 mb-4">
+            <AlertTriangle className="h-5 w-5 text-red-600" />
+            <h2 className="text-xl font-semibold text-gray-900">Critical Review</h2>
+          </div>
+          <div className="space-y-4">
+            {critical_review.major_strengths && critical_review.major_strengths.length > 0 && (
+              <div>
+                <h3 className="text-lg font-medium text-gray-800 mb-2">Major Strengths</h3>
+                <ul className="space-y-1">
+                  {critical_review.major_strengths.map((strength: string, index: number) => (
+                    <li key={index} className="text-sm text-gray-700">• {strength}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {critical_review.major_concerns && critical_review.major_concerns.length > 0 && (
+              <div>
+                <h3 className="text-lg font-medium text-gray-800 mb-2">Major Concerns</h3>
+                <ul className="space-y-1">
+                  {critical_review.major_concerns.map((concern: string, index: number) => (
+                    <li key={index} className="text-sm text-gray-700">• {concern}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {critical_review.alternative_approaches && critical_review.alternative_approaches.length > 0 && (
+              <div>
+                <h3 className="text-lg font-medium text-gray-800 mb-2">Alternative Approaches</h3>
+                <ul className="space-y-1">
+                  {critical_review.alternative_approaches.map((approach: string, index: number) => (
+                    <li key={index} className="text-sm text-gray-700">• {approach}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {critical_review.robustness && (
+              <div>
+                <h3 className="text-lg font-medium text-gray-800 mb-2">Robustness Assessment</h3>
+                <div className="prose prose-sm max-w-none">
+                  <ReactMarkdown>{critical_review.robustness}</ReactMarkdown>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Key Insights - Legacy */}
       {key_insights && key_insights.length > 0 && (
         <div id="key-insights" className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <div className="flex items-center space-x-2 mb-4">
@@ -246,6 +628,8 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({ analysis, isLoading }
           </div>
         </div>
       )}
+
+
 
       {/* Recommendations */}
       {recommendations && (

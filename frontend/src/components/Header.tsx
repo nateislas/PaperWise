@@ -17,31 +17,7 @@ const Header: React.FC = () => {
             </div>
           </div>
           
-          <nav className="hidden md:flex items-center space-x-8">
-            <a 
-              href="#features" 
-              className="text-gray-600 hover:text-primary-600 transition-colors duration-200"
-            >
-              Features
-            </a>
-            <a 
-              href="#about" 
-              className="text-gray-600 hover:text-primary-600 transition-colors duration-200"
-            >
-              About
-            </a>
-            <a 
-              href="#contact" 
-              className="text-gray-600 hover:text-primary-600 transition-colors duration-200"
-            >
-              Contact
-            </a>
-          </nav>
-          
-          <div className="flex items-center space-x-4">
-            <button className="hidden md:inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-primary-700 bg-primary-100 hover:bg-primary-200 transition-colors duration-200">
-              Sign In
-            </button>
+          <div className="flex items-center">
             <button className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 transition-colors duration-200">
               Get Started
             </button>
