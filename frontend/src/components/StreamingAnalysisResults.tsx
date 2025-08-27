@@ -8,7 +8,9 @@ import {
   AlertTriangle,
   CheckCircle,
   Loader,
-  Play
+  Play,
+  ChevronUp,
+  ChevronDown
 } from 'lucide-react';
 import AnalysisResults from './AnalysisResults';
 
@@ -44,6 +46,7 @@ const StreamingAnalysisResults: React.FC<StreamingAnalysisResultsProps> = ({
     contextualization: '',
     synthesis: ''
   });
+  const [isLiveAnalysisExpanded, setIsLiveAnalysisExpanded] = useState(true);
   
   // Use a ref to track content updates for better performance
   const contentRef = useRef({
@@ -341,7 +344,7 @@ const StreamingAnalysisResults: React.FC<StreamingAnalysisResultsProps> = ({
 
     return (
       <div className="space-y-6">
-        {/* Analysis Complete - Show final results */}
+        {/* Analysis Complete Banner */}
         <div className="bg-green-50 border border-green-200 rounded-lg p-4">
           <div className="flex items-center space-x-2">
             <CheckCircle className="h-5 w-5 text-green-600" />
@@ -354,8 +357,14 @@ const StreamingAnalysisResults: React.FC<StreamingAnalysisResultsProps> = ({
           </div>
         </div>
 
-        {/* Use the structured AnalysisResults component */}
-        <AnalysisResults analysis={structuredAnalysis} isLoading={false} />
+        {/* Final Analysis Section */}
+        <div className="space-y-4">
+          <div className="flex items-center space-x-2 mb-4">
+            <BookOpen className="h-5 w-5 text-blue-600" />
+            <h2 className="text-xl font-semibold text-gray-900">Final Analysis</h2>
+          </div>
+          <AnalysisResults analysis={structuredAnalysis} isLoading={false} />
+        </div>
       </div>
     );
   }
@@ -411,57 +420,72 @@ const StreamingAnalysisResults: React.FC<StreamingAnalysisResultsProps> = ({
         </div>
       </div>
 
-      {/* Streaming Content Preview */}
-      {isStreaming && (
-        <div className="space-y-4">
-          {/* Methodology Analysis */}
-          {streamingContent.methodology && (
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-              <div className="flex items-center space-x-2 mb-3">
-                <Target className="h-4 w-4 text-blue-600" />
-                <h3 className="font-medium text-gray-900">Methodology Analysis</h3>
-              </div>
-              <div className="prose prose-sm max-w-none">
-                <ReactMarkdown>{streamingContent.methodology}</ReactMarkdown>
-              </div>
+      {/* Live Analysis Section (Collapsible) */}
+      {(isStreaming || streamingContent.methodology || streamingContent.results || streamingContent.contextualization) && (
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+          <button
+            onClick={() => setIsLiveAnalysisExpanded(!isLiveAnalysisExpanded)}
+            className="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
+          >
+            <div className="flex items-center space-x-2">
+              {isStreaming ? (
+                <Loader className="h-5 w-5 text-green-600 animate-spin" />
+              ) : (
+                <BookOpen className="h-5 w-5 text-green-600" />
+              )}
+              <h2 className="text-xl font-semibold text-gray-900">Live Analysis</h2>
+              <span className="text-sm text-gray-500">(Click to expand/collapse)</span>
             </div>
-          )}
-
-          {/* Results Analysis */}
-          {streamingContent.results && (
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-              <div className="flex items-center space-x-2 mb-3">
-                <TrendingUp className="h-4 w-4 text-green-600" />
-                <h3 className="font-medium text-gray-900">Results Analysis</h3>
-              </div>
-              <div className="prose prose-sm max-w-none">
-                <ReactMarkdown>{streamingContent.results}</ReactMarkdown>
-              </div>
+            <div className="flex items-center space-x-2">
+              {isLiveAnalysisExpanded ? (
+                <ChevronUp className="h-5 w-5 text-gray-500" />
+              ) : (
+                <ChevronDown className="h-5 w-5 text-gray-500" />
+              )}
             </div>
-          )}
+          </button>
+          
+          {isLiveAnalysisExpanded && (
+            <div className="px-4 pb-4 max-h-96 overflow-y-auto">
+              <div className="space-y-4">
+                {/* Methodology Analysis */}
+                {streamingContent.methodology && (
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <div className="flex items-center space-x-2 mb-3">
+                      <Target className="h-4 w-4 text-blue-600" />
+                      <h3 className="font-medium text-gray-900">Methodology Analysis</h3>
+                    </div>
+                    <div className="prose prose-sm max-w-none">
+                      <ReactMarkdown>{streamingContent.methodology}</ReactMarkdown>
+                    </div>
+                  </div>
+                )}
 
-          {/* Contextualization Analysis */}
-          {streamingContent.contextualization && (
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-              <div className="flex items-center space-x-2 mb-3">
-                <Lightbulb className="h-4 w-4 text-yellow-600" />
-                <h3 className="font-medium text-gray-900">Context & Implications</h3>
-              </div>
-              <div className="prose prose-sm max-w-none">
-                <ReactMarkdown>{streamingContent.contextualization}</ReactMarkdown>
-              </div>
-            </div>
-          )}
+                {/* Results Analysis */}
+                {streamingContent.results && (
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <div className="flex items-center space-x-2 mb-3">
+                      <TrendingUp className="h-4 w-4 text-green-600" />
+                      <h3 className="font-medium text-gray-900">Results Analysis</h3>
+                    </div>
+                    <div className="prose prose-sm max-w-none">
+                      <ReactMarkdown>{streamingContent.results}</ReactMarkdown>
+                    </div>
+                  </div>
+                )}
 
-          {/* Synthesis */}
-          {streamingContent.synthesis && (
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-              <div className="flex items-center space-x-2 mb-3">
-                <BookOpen className="h-4 w-4 text-purple-600" />
-                <h3 className="font-medium text-gray-900">Comprehensive Analysis</h3>
-              </div>
-              <div className="prose prose-sm max-w-none">
-                <ReactMarkdown>{streamingContent.synthesis}</ReactMarkdown>
+                {/* Contextualization Analysis */}
+                {streamingContent.contextualization && (
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <div className="flex items-center space-x-2 mb-3">
+                      <Lightbulb className="h-4 w-4 text-yellow-600" />
+                      <h3 className="font-medium text-gray-900">Context & Implications</h3>
+                    </div>
+                    <div className="prose prose-sm max-w-none">
+                      <ReactMarkdown>{streamingContent.contextualization}</ReactMarkdown>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
