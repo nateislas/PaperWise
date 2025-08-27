@@ -6,6 +6,7 @@ import logging
 from openai import OpenAI
 import asyncio
 import time
+import concurrent.futures
 
 from app.config import settings
 
@@ -133,7 +134,9 @@ class BaseAgent(ABC):
         logger.info(f"🎯 {self.name}: Starting streaming API call")
         
         try:
-            response = self.llama_client.chat.completions.create(
+            # Make the API call in a thread to avoid blocking the event loop
+            response = await asyncio.to_thread(
+                self.llama_client.chat.completions.create,
                 model=settings.llama_model,
                 messages=messages,
                 temperature=settings.llama_temperature,
@@ -143,18 +146,19 @@ class BaseAgent(ABC):
             )
             
             buffer = ""
+            # Process the synchronous iterator directly - this is the correct approach
             for chunk in response:
                 if chunk.choices[0].delta.content:
                     content = chunk.choices[0].delta.content
                     buffer += content
                     
-                    # Yield more frequently for better streaming
+                    # Yield when buffer reaches chunk size
                     if len(buffer) >= settings.stream_chunk_size:
                         chunk_count += 1
                         logger.info(f"📤 {self.name}: Yielding chunk #{chunk_count} (length: {len(buffer)})")
                         yield buffer
                         buffer = ""
-                        # Minimal delay to prevent overwhelming
+                        # Small delay to prevent overwhelming
                         await asyncio.sleep(0.005)
             
             # Yield any remaining content

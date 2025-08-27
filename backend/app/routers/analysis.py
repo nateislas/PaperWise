@@ -109,12 +109,12 @@ async def analyze_paper_stream(request: AnalysisRequest):
                     data = json.dumps(chunk, ensure_ascii=False)
                     stream_data = f"data: {data}\n\n"
                     
-                    logger.info(f"📤 Yielding chunk #{chunk_count}: type={chunk.get('type', 'unknown')}, content_length={len(chunk.get('content', ''))}")
+                    logger.info(f"📤 Yielding chunk #{chunk_count}: type={chunk.get('type', 'unknown')}, progress={chunk.get('progress', 'N/A')}, content_length={len(chunk.get('content', ''))}")
                     
                     yield stream_data
                     
-                    # Minimal delay for responsive streaming
-                    await asyncio.sleep(0.005)
+                    # Ensure chunks are flushed immediately
+                    await asyncio.sleep(0.01)
                     
                 logger.info(f"✅ Stream generation completed. Total chunks: {chunk_count}")
                     

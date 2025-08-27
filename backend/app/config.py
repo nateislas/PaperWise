@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     
     # Performance & Streaming Configuration
     enable_streaming: bool = True
-    stream_chunk_size: int = 5  # Very small chunks for more responsive streaming
+    stream_chunk_size: int = 50  # Reasonable chunk size for responsive streaming
     request_timeout: int = 300  # 5 minutes
     connection_timeout: int = 30  # 30 seconds
     max_concurrent_requests: int = 10
