@@ -28,17 +28,13 @@ PaperWise helps researchers understand:
 - **The "Results and Impact"**: Key findings, interpretations, and limitations
 - **The "So What"**: Contribution to the field and relevance to your work
 
-## 🖼️ Application Flow
+## 🎥 Demo
 
 <div align="center">
-  <img src="figures/fig1.png" alt="Upload Interface" width="200"/>
-  <img src="figures/fig2.png" alt="Analysis Progress" width="200"/>
-  <img src="figures/fig3.png" alt="Comprehensive Results" width="200"/>
-  <img src="figures/fig4.png" alt="Interactive Features" width="200"/>
-  <img src="figures/fig5.png" alt="Final Insights" width="200"/>
+  <img src="figures/demo.gif" alt="PaperWise Demo" width="800"/>
+  <br/>
+  <em>🚀 Watch PaperWise in action - From upload to comprehensive analysis in seconds</em>
 </div>
-
-*From upload to insights: Clean interface, real-time progress, comprehensive analysis, interactive queries, and actionable recommendations*
 
 ## 🏗️ Architecture
 
