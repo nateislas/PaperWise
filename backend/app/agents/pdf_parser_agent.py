@@ -133,17 +133,41 @@ Provide clean, well-structured content that can be used by other analysis agents
         for page_num in range(len(doc)):
             try:
                 page = doc.load_page(page_num)
-                table_list = page.get_tables()
+                
+                # Try different methods to extract tables
+                table_list = []
+                try:
+                    # Try find_tables() method (newer PyMuPDF versions)
+                    table_finder = page.find_tables()
+                    table_list = table_finder.tables
+                except AttributeError:
+                    try:
+                        # Try get_tables() method (older versions or different library)
+                        table_list = page.get_tables()
+                    except AttributeError:
+                        # If neither method exists, skip table extraction
+                        logger.info(f"Table extraction not available for page {page_num + 1}")
+                        continue
                 
                 for table_idx, table in enumerate(table_list):
-                    table_data = {
-                        "page": page_num + 1,
-                        "table_index": table_idx,
-                        "rows": len(table),
-                        "columns": len(table[0]) if table else 0,
-                        "data": table
-                    }
-                    tables.append(table_data)
+                    try:
+                        # Handle different table object types
+                        if hasattr(table, 'extract'):
+                            table_data_raw = table.extract()
+                        else:
+                            table_data_raw = table
+                        
+                        table_data = {
+                            "page": page_num + 1,
+                            "table_index": table_idx,
+                            "rows": len(table_data_raw) if table_data_raw else 0,
+                            "columns": len(table_data_raw[0]) if table_data_raw and table_data_raw[0] else 0,
+                            "data": table_data_raw
+                        }
+                        tables.append(table_data)
+                    except Exception as table_error:
+                        logger.warning(f"Error processing table {table_idx} on page {page_num + 1}: {str(table_error)}")
+                        continue
                     
             except Exception as e:
                 logger.warning(f"Error extracting tables from page {page_num + 1}: {str(e)}")
