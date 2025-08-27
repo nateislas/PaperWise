@@ -16,3 +16,4 @@ httpx>=0.25.2
 aiofiles>=23.2.1
 Pillow>=10.1.0
 tiktoken>=0.5.2
+httptools>=0.6.1
