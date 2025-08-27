@@ -1,6 +1,9 @@
 from pydantic_settings import BaseSettings
 from typing import Optional
 import os
+import logging
+
+logger = logging.getLogger(__name__)
 
 class Settings(BaseSettings):
     # API Configuration
@@ -13,6 +16,13 @@ class Settings(BaseSettings):
     llama_base_url: str = "https://api.llama.com/compat/v1/"
     llama_model: str = "Llama-4-Maverick-17B-128E-Instruct-FP8"
     llama_temperature: float = 0.1
+    
+    # Performance & Streaming Configuration
+    enable_streaming: bool = True
+    stream_chunk_size: int = 5  # Very small chunks for more responsive streaming
+    request_timeout: int = 300  # 5 minutes
+    connection_timeout: int = 30  # 30 seconds
+    max_concurrent_requests: int = 10
     
     # Vector Database Configuration
     chroma_persist_directory: str = "./chroma_db"
@@ -46,5 +56,5 @@ def validate_settings():
 try:
     validate_settings()
 except ValueError as e:
-    print(f"Configuration Error: {e}")
-    print("Please set the required environment variables in your .env file")
+    logger.error(f"Configuration error: {e}")
+    logger.error("Please check your .env file and ensure all required variables are set.")

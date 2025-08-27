@@ -15,13 +15,14 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# CORS middleware for frontend communication
+# CORS middleware for frontend communication with streaming support
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 # Include routers
@@ -43,8 +44,15 @@ async def upload_paper(file: UploadFile = File(...)):
     if not file.filename.lower().endswith('.pdf'):
         raise HTTPException(status_code=400, detail="Only PDF files are supported")
     
+    # Check file size
+    if file.size and file.size > settings.max_file_size:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"File too large. Maximum size is {settings.max_file_size // (1024*1024)}MB"
+        )
+    
     # Create uploads directory if it doesn't exist
-    upload_dir = "uploads"
+    upload_dir = settings.upload_dir
     os.makedirs(upload_dir, exist_ok=True)
     
     # Generate unique filename
@@ -68,4 +76,17 @@ async def upload_paper(file: UploadFile = File(...)):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(
+        app, 
+        host="0.0.0.0", 
+        port=8000,
+        # Performance optimizations
+        workers=1,  # Single worker for streaming support
+        loop="asyncio",
+        http="httptools",  # Faster HTTP parser
+        access_log=True,
+        log_level="info",
+        # Streaming optimizations
+        timeout_keep_alive=30,
+        timeout_graceful_shutdown=30
+    )
