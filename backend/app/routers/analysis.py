@@ -13,7 +13,6 @@ from app.agents.orchestrator_agent import OrchestratorAgent
 from app.config import settings
 from app.worker import celery_app, analyze_job
 from app.job_state import init_job, set_state, get_status, publish_current_status
-from celery.result import AsyncResult
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -177,19 +176,6 @@ async def get_job_status(job_id: str):
         logger.error(f"Error getting job status: {e}")
         logger.error(traceback.format_exc())
         return get_status(job_id)
-
-
-@router.get("/jobs_debug/{job_id}")
-async def get_job_status_debug(job_id: str):
-    """Temporary debug endpoint to isolate routing/handler issues."""
-    try:
-        return {
-            "job_id": job_id,
-            "ok": True,
-            "note": "debug endpoint"
-        }
-    except Exception as e:
-        return {"job_id": job_id, "ok": False, "error": str(e)}
 
 
 @router.get("/jobs/{job_id}/result")
