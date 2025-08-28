@@ -41,8 +41,8 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
   
   if (message.type === 'analyze_paper') {
     try {
-      await analyzePaper(message.url);
-      sendResponse({ success: true });
+      const result = await analyzePaper(message.url);
+      sendResponse({ success: true, jobId: result.jobId });
     } catch (error) {
       console.error('Analysis error from content script:', error);
       sendResponse({ success: false, error: error.message });
@@ -85,8 +85,7 @@ async function analyzePaper(url) {
   try {
     const pdfUrl = extractPdfUrl(url);
     if (!pdfUrl) {
-      showNotification('Invalid arXiv URL', 'Could not extract PDF URL from: ' + url);
-      return;
+      throw new Error('Could not extract PDF URL from: ' + url);
     }
 
     // Submit job
@@ -98,15 +97,20 @@ async function analyzePaper(url) {
     const jobId = jobResponse.job_id;
     activeJobs.set(jobId, { url: pdfUrl, submittedAt: Date.now() });
 
-    // Start SSE stream
-    await startSseStream(jobId);
+    // Start SSE stream (don't await this - let it run in background)
+    startSseStream(jobId).catch(error => {
+      console.error('SSE stream error:', error);
+    });
 
     // Show initial notification
     showNotification('Analysis Started', `Analyzing paper: ${pdfUrl.split('/').pop()}`);
 
+    return { success: true, jobId };
+
   } catch (error) {
     console.error('Analysis error:', error);
     showNotification('Analysis Failed', error.message);
+    throw error; // Re-throw so caller can handle it
   }
 }
 
