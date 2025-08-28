@@ -12,6 +12,7 @@ const AnalysisPage: React.FC<AnalysisPageProps> = () => {
   const [error, setError] = useState<string | null>(null);
   const [analysisStatus, setAnalysisStatus] = useState<string>('unknown');
   const [fileId, setFileId] = useState<string | null>(null);
+  const [metadata, setMetadata] = useState<any>(null);
 
   useEffect(() => {
     if (analysisId) {
@@ -35,13 +36,16 @@ const AnalysisPage: React.FC<AnalysisPageProps> = () => {
 
       const metadata = await metadataResponse.json();
       setAnalysisStatus(metadata.analysis_info.status);
+      setMetadata(metadata);
 
-      // If analysis is still in progress, we need to start streaming
+      // Extract fileId from original_filename if analysis is in progress
       if (metadata.analysis_info.status === 'processing' || metadata.analysis_info.status === 'queued') {
-        // For now, we'll show a loading state and let the user know to wait
-        setError('Analysis is still in progress. Please wait for it to complete.');
-        setIsLoading(false);
-        return;
+        const originalFilename = metadata.paper_info.original_filename;
+        if (originalFilename && '_' in originalFilename) {
+          const extractedFileId = originalFilename.split('_')[0];
+          setFileId(extractedFileId);
+        }
+        return; // Don't fetch results yet, let streaming handle it
       }
 
       // If analysis is completed, get the results
@@ -130,26 +134,16 @@ const AnalysisPage: React.FC<AnalysisPageProps> = () => {
     return (
       <div className="min-h-screen bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
-            <div className="text-center">
-              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-              </div>
-              <h2 className="text-xl font-semibold text-gray-900 mb-2">Analysis in Progress</h2>
-              <p className="text-gray-600 mb-4">
-                Your paper is being analyzed. This may take a few minutes.
-              </p>
-              <p className="text-sm text-gray-500">
-                Status: {analysisStatus === 'queued' ? 'Queued' : 'Processing'}
-              </p>
-              <button
-                onClick={fetchAnalysis}
-                className="mt-4 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                Check Status
-              </button>
-            </div>
-          </div>
+          <StreamingAnalysisResults
+            fileId={fileId || ''} // Use extracted fileId for streaming
+            onComplete={(finalAnalysis) => {
+              setAnalysis(finalAnalysis);
+              setAnalysisStatus('completed');
+            }}
+            onError={(errorMessage) => {
+              setError(errorMessage);
+            }}
+          />
         </div>
       </div>
     );
