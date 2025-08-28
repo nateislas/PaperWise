@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Header from './components/Header';
 import PaperAnalysis from './pages/PaperAnalysis';
 import Dashboard from './pages/Dashboard';
+import AnalysisPage from './pages/AnalysisPage';
 import './index.css';
 
 function App() {
@@ -14,7 +15,7 @@ function App() {
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/upload" element={<PaperAnalysis />} />
-            <Route path="/analysis/:analysisId" element={<PaperAnalysis />} />
+            <Route path="/analysis/:analysisId" element={<AnalysisPage />} />
           </Routes>
         </main>
       </div>
