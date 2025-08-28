@@ -61,7 +61,7 @@ class ArxivContentScript {
         align-items: center;
         gap: 6px;
       ">
-        <span>📄</span>
+        <span>🧠</span>
         <span>Analyze with PaperWise</span>
       </div>
     `;
