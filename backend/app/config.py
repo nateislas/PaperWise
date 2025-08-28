@@ -36,6 +36,11 @@ class Settings(BaseSettings):
     chunk_overlap: int = 200
     max_tokens_per_request: int = 4000
     
+    # Redis / Celery
+    redis_url: str = "redis://localhost:6379/0"
+    celery_broker_url: Optional[str] = None
+    celery_result_backend: Optional[str] = None
+    
     class Config:
         env_file = ".env"
         case_sensitive = False
@@ -51,6 +56,12 @@ def validate_settings():
     # Create necessary directories
     os.makedirs(settings.upload_dir, exist_ok=True)
     os.makedirs(settings.chroma_persist_directory, exist_ok=True)
+    
+    # Default Celery config from redis_url if not provided
+    if not settings.celery_broker_url:
+        settings.celery_broker_url = settings.redis_url
+    if not settings.celery_result_backend:
+        settings.celery_result_backend = settings.redis_url
 
 # Call validation on import
 try:

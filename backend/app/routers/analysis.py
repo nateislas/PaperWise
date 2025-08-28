@@ -1,14 +1,19 @@
 from fastapi import APIRouter, HTTPException, UploadFile, File, Depends
 from fastapi.responses import StreamingResponse, JSONResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from typing import Optional, Dict, Any, List
 import os
 import logging
 import json
 import asyncio
+import uuid
+import httpx
 
 from app.agents.orchestrator_agent import OrchestratorAgent
 from app.config import settings
+from app.worker import celery_app, analyze_job
+from app.job_state import init_job, set_state, get_status
+from celery.result import AsyncResult
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -26,6 +31,63 @@ class AnalysisResponse(BaseModel):
     status: str
     message: str
     analysis: Optional[Dict[str, Any]] = None
+
+
+class AsyncAnalyzeRequest(BaseModel):
+    file_id: Optional[str] = None
+    pdf_url: Optional[str] = None
+    query: Optional[str] = None
+    analysis_type: str = "comprehensive"
+
+    @field_validator("pdf_url")
+    @classmethod
+    def validate_url(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        # Basic guard; deeper allow‑list enforced during fetch
+        if not (v.startswith("http://") or v.startswith("https://")):
+            raise ValueError("pdf_url must be http(s)")
+        return v
+
+
+def _uploads_path_for_file_id(file_id: str) -> Optional[str]:
+    upload_dir = settings.upload_dir
+    for filename in os.listdir(upload_dir):
+        if filename.startswith(file_id):
+            return os.path.abspath(os.path.join(upload_dir, filename))
+    return None
+
+
+async def _download_pdf_to_uploads(pdf_url: str, filename_hint: Optional[str] = None) -> str:
+    # Allow‑list basic arXiv domain; extend as needed
+    allow_domains = ["arxiv.org", "export.arxiv.org"]
+    from urllib.parse import urlparse
+    host = urlparse(pdf_url).hostname or ""
+    if not any(host.endswith(d) for d in allow_domains):
+        raise HTTPException(status_code=400, detail="pdf_url domain is not allowed")
+
+    timeout = httpx.Timeout(30.0, connect=10.0)
+    async with httpx.AsyncClient(follow_redirects=True, timeout=timeout) as client:
+        resp = await client.get(pdf_url)
+        if resp.status_code != 200:
+            raise HTTPException(status_code=400, detail=f"Failed to fetch PDF ({resp.status_code})")
+        content_type = resp.headers.get("content-type", "")
+        content_bytes = resp.content
+        if "pdf" not in content_type:
+            # Some servers omit type; fallback by checking first bytes for %PDF
+            if not content_bytes.startswith(b"%PDF"):
+                raise HTTPException(status_code=400, detail="Fetched content is not a PDF")
+
+    file_id = str(uuid.uuid4())
+    suggested_name = filename_hint or os.path.basename(pdf_url.split("?")[0]) or "paper.pdf"
+    filename = f"{file_id}_{suggested_name}"
+    upload_dir = settings.upload_dir
+    os.makedirs(upload_dir, exist_ok=True)
+    file_path = os.path.join(upload_dir, filename)
+    with open(file_path, 'wb') as f:
+        f.write(content_bytes)
+
+    return file_path
 
 @router.post("/analyze", response_model=AnalysisResponse)
 async def analyze_paper(request: AnalysisRequest):
@@ -64,6 +126,87 @@ async def analyze_paper(request: AnalysisRequest):
     except Exception as e:
         logger.error(f"Error in analysis endpoint: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
+
+
+@router.post("/analyze/async")
+async def analyze_paper_async(request: AsyncAnalyzeRequest):
+    """
+    Submit an async analysis job. Accepts either file_id or pdf_url and returns job_id immediately.
+    """
+    try:
+        has_file = bool(request.file_id)
+        has_url = bool(request.pdf_url)
+        if has_file == has_url:
+            raise HTTPException(status_code=400, detail="Provide exactly one of file_id or pdf_url")
+
+        # Resolve file path
+        file_path: Optional[str] = None
+        if request.file_id:
+            file_path = _uploads_path_for_file_id(request.file_id)
+            if not file_path or not os.path.exists(file_path):
+                raise HTTPException(status_code=404, detail="File not found")
+        else:
+            # Download server‑side
+            file_path = await _download_pdf_to_uploads(request.pdf_url or "")
+
+        job_id = str(uuid.uuid4())
+        # Initialize job state in Redis
+        init_job(job_id, file_path, request.query)
+        task = analyze_job.apply_async(args=({
+            "job_id": job_id,
+            "file_path": file_path,
+            "query": request.query,
+            "analysis_type": request.analysis_type,
+        },), task_id=job_id)
+
+        return {"job_id": job_id, "status": "queued"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error submitting async analysis: {e}")
+        raise HTTPException(status_code=500, detail="Failed to submit job")
+
+
+@router.get("/jobs/{job_id}")
+async def get_job_status(job_id: str):
+    """Return job state and result_url when available without relying on Celery backend decoding."""
+    try:
+        return get_status(job_id)
+    except Exception as e:
+        import traceback
+        logger.error(f"Error getting job status: {e}")
+        logger.error(traceback.format_exc())
+        return get_status(job_id)
+
+
+@router.get("/jobs_debug/{job_id}")
+async def get_job_status_debug(job_id: str):
+    """Temporary debug endpoint to isolate routing/handler issues."""
+    try:
+        return {
+            "job_id": job_id,
+            "ok": True,
+            "note": "debug endpoint"
+        }
+    except Exception as e:
+        return {"job_id": job_id, "ok": False, "error": str(e)}
+
+
+@router.get("/jobs/{job_id}/result")
+async def get_job_result(job_id: str):
+    """Return the final JSON result for a job if present."""
+    try:
+        result_path = os.path.join(settings.upload_dir, "results", f"{job_id}.json")
+        if not os.path.exists(result_path):
+            raise HTTPException(status_code=404, detail="Result not found")
+        with open(result_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        return JSONResponse(content=data)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error reading job result: {e}")
+        raise HTTPException(status_code=500, detail="Failed to read job result")
 
 @router.post("/analyze/stream")
 async def analyze_paper_stream(request: AnalysisRequest):

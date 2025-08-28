@@ -1,0 +1,44 @@
+---
+type: always
+description: Python coding standards and best practices
+---
+
+# Python Development Standards
+
+## Code Style
+- **STRICTLY follow PEP8 guidelines**
+- Use 4 spaces for indentation (never tabs)
+- Maximum line length of 88 characters (Black formatter standard)
+- Use snake_case for variables, functions, and module names
+- Use PascalCase for class names
+- Use UPPER_CASE for constants
+
+## Type Hints
+- Always use type hints for function parameters and return values
+- Import types from `typing` when needed
+- Use `Optional[Type]` for nullable parameters
+- Example: `def process_data(items: List[Dict[str, Any]]) -> Optional[DataFrame]:`
+
+## Error Handling
+- Use specific exception types, not bare `except:`
+- Always handle exceptions properly, don't suppress them
+- Use logging instead of print statements
+- Example: `except ValueError as e: logger.error(f"Invalid data format: {e}")`
+
+## Documentation
+- Use docstrings for all functions and classes
+- Follow Google or NumPy docstring format
+- Include parameter types and descriptions
+- Include return value description and type
+
+## Code Organization
+- **Before writing new functions, check if similar ones exist**
+- **Follow existing file organization patterns**
+- **Import and reuse existing utilities**
+- **Don't duplicate functionality that already exists**
+
+## Implementation Approach
+- **Start with the simplest working solution**
+- **One function/class at a time**
+- **Test each piece before adding complexity**
+- **Ask before making major architectural changes**

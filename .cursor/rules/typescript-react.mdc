@@ -1,0 +1,44 @@
+---
+type: auto-attached
+globs: ["**/*.ts", "**/*.tsx", "**/*.js", "**/*.jsx"]
+description: TypeScript and React development standards
+---
+
+# TypeScript/React Standards
+
+## TypeScript
+- Use strict mode TypeScript configuration
+- Define proper interfaces and types
+- Avoid `any` type unless absolutely necessary
+- Use union types and type guards when appropriate
+- Example: `interface User { id: string; name: string; email?: string; }`
+
+## React Components
+- Use functional components with hooks
+- Define prop types with interfaces
+- Use meaningful component and prop names
+- Keep components focused and single-purpose
+- Example: `interface ButtonProps { onClick: () => void; children: React.ReactNode; variant?: 'primary' | 'secondary'; }`
+
+## Hooks and State
+- Use appropriate hooks for the task (useState, useEffect, useMemo, etc.)
+- Extract custom hooks for reusable logic
+- Handle loading and error states properly
+- Clean up effects when needed
+
+## File Organization
+- One component per file
+- Export components as default
+- Group related utilities and types in appropriate modules
+
+## Component Development
+- **Check existing components before creating new ones**
+- **Reuse existing patterns and utilities**
+- **Start with basic functionality, add features incrementally**
+- **Follow existing state management patterns**
+
+## Integration Guidelines
+- **Import and use existing types and interfaces**
+- **Follow established routing and navigation patterns**
+- **Use existing styling approaches and design tokens**
+- **Don't create duplicate components or utilities**
