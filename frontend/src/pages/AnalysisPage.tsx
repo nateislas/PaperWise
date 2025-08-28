@@ -56,11 +56,39 @@ const AnalysisPage: React.FC<AnalysisPageProps> = () => {
 
         const results = await resultsResponse.json();
 
-        // Combine metadata and results
+        // Parse the comprehensive_analysis if it's a JSON string
+        let parsedComprehensiveAnalysis = results.comprehensive_analysis;
+        if (typeof parsedComprehensiveAnalysis === 'string') {
+          try {
+            // Remove markdown code blocks if present
+            let cleanedAnalysis = parsedComprehensiveAnalysis.trim();
+            if (cleanedAnalysis.startsWith('```json') && cleanedAnalysis.endsWith('```')) {
+              cleanedAnalysis = cleanedAnalysis.slice(7, -3).trim();
+            } else if (cleanedAnalysis.startsWith('```') && cleanedAnalysis.endsWith('```')) {
+              cleanedAnalysis = cleanedAnalysis.slice(3, -3).trim();
+            }
+            parsedComprehensiveAnalysis = JSON.parse(cleanedAnalysis);
+          } catch (parseError) {
+            console.error('Failed to parse comprehensive_analysis:', parseError);
+            // Keep as string if parsing fails
+          }
+        }
+
+        // Combine metadata and results in the correct format
         setAnalysis({
-          ...results,
           analysis_id: analysisId,
-          metadata: metadata.analysis_info,
+          field: results.field,
+          subfield: results.subfield,
+          conferences: results.conferences,
+          field_confidence: results.field_confidence,
+          sections: results.sections || [],
+          figures: results.figures || [],
+          comprehensive_analysis: parsedComprehensiveAnalysis,
+          metadata: {
+            analysis_timestamp: metadata.completed_at,
+            analysis_confidence: 0.85, // Default confidence
+            model_used: "Llama-4-Maverick-17B-128E-Instruct-FP8"
+          },
           paper_info: metadata.paper_info
         });
       }
