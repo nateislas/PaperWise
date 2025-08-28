@@ -62,7 +62,7 @@ const UploadArea: React.FC<UploadAreaProps> = ({ onUploadSuccess }) => {
       const formData = new FormData();
       formData.append('file', file);
 
-      const response = await fetch('/api/v1/upload', {
+      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/api/v1/upload`, {
         method: 'POST',
         body: formData,
       });
@@ -87,7 +87,7 @@ const UploadArea: React.FC<UploadAreaProps> = ({ onUploadSuccess }) => {
 
   const startAnalysis = async (fileId: string, filename: string) => {
     try {
-      const response = await fetch('/api/v1/analyze/async', {
+      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/api/v1/analyze/async`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

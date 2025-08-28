@@ -72,7 +72,7 @@ const AnalysisCard: React.FC<AnalysisCardProps> = ({ analysis, onDelete }) => {
 
     setIsDeleting(true);
     try {
-      const response = await fetch(`/api/v1/analyses/${analysis.analysis_id}`, {
+      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/api/v1/analyses/${analysis.analysis_id}`, {
         method: 'DELETE',
       });
 
@@ -152,7 +152,7 @@ const AnalysisCard: React.FC<AnalysisCardProps> = ({ analysis, onDelete }) => {
               View Results
             </Link>
             <a
-              href={`/api/v1/analyses/${analysis.analysis_id}/paper`}
+              href={`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/api/v1/analyses/${analysis.analysis_id}/paper`}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center px-3 py-1.5 border border-gray-300 text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 transition-colors"

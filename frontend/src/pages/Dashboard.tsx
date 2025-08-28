@@ -60,7 +60,7 @@ const Dashboard: React.FC = () => {
 
   const fetchAnalyses = async () => {
     try {
-      const response = await fetch('/api/v1/analyses?limit=20');
+      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/api/v1/analyses?limit=20`);
       const data = await response.json();
       setAnalyses(data.analyses || []);
     } catch (error) {
@@ -72,7 +72,7 @@ const Dashboard: React.FC = () => {
 
   const fetchStats = async () => {
     try {
-      const response = await fetch('/api/v1/analyses/stats/summary');
+      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/api/v1/analyses/stats/summary`);
       const data = await response.json();
       setStats(data);
     } catch (error) {
@@ -131,6 +131,14 @@ const Dashboard: React.FC = () => {
       </header>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Welcome Section */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
+          <h2 className="text-xl font-semibold text-gray-900 mb-3">Welcome to PaperWise</h2>
+          <p className="text-gray-700 leading-relaxed">
+            Upload your research paper to PaperWise and get instant, in-depth analysis. Our AI agent goes beyond a simple summary, providing you with a critical breakdown of the methodology, key findings, and contributions to the field—just like a fellow researcher would.
+          </p>
+        </div>
+
         {/* Stats Cards */}
         {stats && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
