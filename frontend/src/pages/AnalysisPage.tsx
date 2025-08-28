@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import AnalysisResults from '../components/AnalysisResults';
+import StreamingAnalysisResults from '../components/StreamingAnalysisResults';
 
 interface AnalysisPageProps {}
 
@@ -9,6 +10,8 @@ const AnalysisPage: React.FC<AnalysisPageProps> = () => {
   const [analysis, setAnalysis] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [analysisStatus, setAnalysisStatus] = useState<string>('unknown');
+  const [fileId, setFileId] = useState<string | null>(null);
 
   useEffect(() => {
     if (analysisId) {
@@ -31,25 +34,36 @@ const AnalysisPage: React.FC<AnalysisPageProps> = () => {
       }
 
       const metadata = await metadataResponse.json();
+      setAnalysisStatus(metadata.analysis_info.status);
 
-      // Then, get the analysis results
-      const resultsResponse = await fetch(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/api/v1/analyses/${analysisId}/results/comprehensive`
-      );
-
-      if (!resultsResponse.ok) {
-        throw new Error('Analysis results not found');
+      // If analysis is still in progress, we need to start streaming
+      if (metadata.analysis_info.status === 'processing' || metadata.analysis_info.status === 'queued') {
+        // For now, we'll show a loading state and let the user know to wait
+        setError('Analysis is still in progress. Please wait for it to complete.');
+        setIsLoading(false);
+        return;
       }
 
-      const results = await resultsResponse.json();
+      // If analysis is completed, get the results
+      if (metadata.analysis_info.status === 'completed') {
+        const resultsResponse = await fetch(
+          `${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/api/v1/analyses/${analysisId}/results/comprehensive`
+        );
 
-      // Combine metadata and results
-      setAnalysis({
-        ...results,
-        analysis_id: analysisId,
-        metadata: metadata.analysis_info,
-        paper_info: metadata.paper_info
-      });
+        if (!resultsResponse.ok) {
+          throw new Error('Analysis results not found');
+        }
+
+        const results = await resultsResponse.json();
+
+        // Combine metadata and results
+        setAnalysis({
+          ...results,
+          analysis_id: analysisId,
+          metadata: metadata.analysis_info,
+          paper_info: metadata.paper_info
+        });
+      }
 
     } catch (err) {
       console.error('Error fetching analysis:', err);
@@ -59,7 +73,7 @@ const AnalysisPage: React.FC<AnalysisPageProps> = () => {
     }
   };
 
-  if (error) {
+  if (error && analysisStatus !== 'processing' && analysisStatus !== 'queued') {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 max-w-md">
@@ -83,10 +97,53 @@ const AnalysisPage: React.FC<AnalysisPageProps> = () => {
     );
   }
 
+  // If analysis is still in progress, show streaming interface
+  if (analysisStatus === 'processing' || analysisStatus === 'queued') {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
+            <div className="text-center">
+              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              </div>
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">Analysis in Progress</h2>
+              <p className="text-gray-600 mb-4">
+                Your paper is being analyzed. This may take a few minutes.
+              </p>
+              <p className="text-sm text-gray-500">
+                Status: {analysisStatus === 'queued' ? 'Queued' : 'Processing'}
+              </p>
+              <button
+                onClick={fetchAnalysis}
+                className="mt-4 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Check Status
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // If analysis is completed, show results
+  if (analysis) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <AnalysisResults analysis={analysis} isLoading={false} />
+        </div>
+      </div>
+    );
+  }
+
+  // Loading state
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <AnalysisResults analysis={analysis} isLoading={isLoading} />
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+        <p className="mt-4 text-gray-600">Loading analysis...</p>
       </div>
     </div>
   );
