@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Header from './components/Header';
 import PaperAnalysis from './pages/PaperAnalysis';
+import Dashboard from './pages/Dashboard';
 import './index.css';
 
 function App() {
@@ -9,9 +10,11 @@ function App() {
     <Router>
       <div className="min-h-screen bg-gray-50">
         <Header />
-        <main className="container mx-auto px-4 py-8">
+        <main>
           <Routes>
-            <Route path="/" element={<PaperAnalysis />} />
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/upload" element={<PaperAnalysis />} />
+            <Route path="/analysis/:analysisId" element={<PaperAnalysis />} />
           </Routes>
         </main>
       </div>
