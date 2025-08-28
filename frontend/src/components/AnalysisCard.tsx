@@ -66,7 +66,7 @@ const AnalysisCard: React.FC<AnalysisCardProps> = ({ analysis, onDelete }) => {
   };
 
   const handleDelete = async () => {
-    if (!confirm('Are you sure you want to delete this analysis? This action cannot be undone.')) {
+    if (!window.confirm('Are you sure you want to delete this analysis? This action cannot be undone.')) {
       return;
     }
 
