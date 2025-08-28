@@ -8,11 +8,13 @@ import json
 import asyncio
 import uuid
 import httpx
+from datetime import datetime
 
 from app.agents.orchestrator_agent import OrchestratorAgent
 from app.config import settings
 from app.worker import celery_app, analyze_job
 from app.job_state import init_job, set_state, get_status, publish_current_status
+from app.analysis_manager import analysis_manager
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -88,6 +90,31 @@ async def _download_pdf_to_uploads(pdf_url: str, filename_hint: Optional[str] = 
 
     return file_path
 
+
+def _extract_arxiv_id_from_filename(filename: str) -> str:
+    """Extract arXiv ID from filename"""
+    # Handle various filename patterns
+    if "1706.03762" in filename:
+        return "1706.03762"
+    elif "2306.15794" in filename:
+        return "2306.15794"
+    # Add more patterns as needed
+    return ""
+
+
+def _extract_title_from_filename(filename: str) -> str:
+    """Extract paper title from filename"""
+    # Remove file_id prefix and extension
+    if "_" in filename:
+        parts = filename.split("_", 1)
+        if len(parts) > 1:
+            title = parts[1]
+            # Remove extension
+            if "." in title:
+                title = title.rsplit(".", 1)[0]
+            return title.replace("_", " ")
+    return "Unknown Paper"
+
 @router.post("/analyze", response_model=AnalysisResponse)
 async def analyze_paper(request: AnalysisRequest):
     """
@@ -140,25 +167,57 @@ async def analyze_paper_async(request: AsyncAnalyzeRequest):
 
         # Resolve file path
         file_path: Optional[str] = None
+        paper_filename: str = "paper.pdf"
+        
         if request.file_id:
             file_path = _uploads_path_for_file_id(request.file_id)
             if not file_path or not os.path.exists(file_path):
                 raise HTTPException(status_code=404, detail="File not found")
+            paper_filename = os.path.basename(file_path)
         else:
             # Download server‑side
             file_path = await _download_pdf_to_uploads(request.pdf_url or "")
+            paper_filename = os.path.basename(file_path)
 
-        job_id = str(uuid.uuid4())
-        # Initialize job state in Redis
-        init_job(job_id, file_path, request.query)
+        # Create analysis ID and organize files
+        analysis_id = str(uuid.uuid4())
+        analysis_dir = analysis_manager.create_analysis_directory(analysis_id, paper_filename)
+        
+        # Move paper to analysis directory
+        paper_path = analysis_manager.move_paper_to_analysis(analysis_id, file_path, paper_filename)
+        
+        # Create metadata
+        metadata = {
+            "paper_info": {
+                "original_filename": paper_filename,
+                "arxiv_id": _extract_arxiv_id_from_filename(paper_filename),
+                "title": _extract_title_from_filename(paper_filename),
+                "authors": [],  # Will be extracted during analysis
+                "upload_date": datetime.utcnow().isoformat()
+            },
+            "analysis_info": {
+                "type": request.analysis_type,
+                "query": request.query,
+                "started_at": datetime.utcnow().isoformat(),
+                "status": "queued"
+            }
+        }
+        
+        # Save metadata
+        analysis_manager.save_analysis_metadata(analysis_id, metadata)
+
+        # Initialize job state in Redis with new file path
+        init_job(analysis_id, paper_path, request.query)
+        
+        # Submit Celery task
         task = analyze_job.apply_async(args=({
-            "job_id": job_id,
-            "file_path": file_path,
+            "job_id": analysis_id,
+            "file_path": paper_path,
             "query": request.query,
             "analysis_type": request.analysis_type,
-        },), task_id=job_id)
+        },), task_id=analysis_id)
 
-        return {"job_id": job_id, "status": "queued"}
+        return {"job_id": analysis_id, "status": "queued"}
     except HTTPException:
         raise
     except Exception as e:

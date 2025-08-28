@@ -4,10 +4,12 @@ import os
 import json
 import time
 import asyncio
+from datetime import datetime
 
 from app.config import settings
 from app.agents.orchestrator_agent import OrchestratorAgent
 from app.job_state import set_state, publish_update
+from app.analysis_manager import analysis_manager
 
 
 celery_app = Celery(
@@ -80,15 +82,28 @@ def analyze_job(self, job: Dict[str, Any]) -> Dict[str, Any]:
 
         result = asyncio.run(run_stream())
 
-        # Persist result
-        path = _result_path(job["job_id"])
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(result, f, ensure_ascii=False)
+        # Save results using analysis manager
+        analysis_id = job["job_id"]
+        
+        # Save comprehensive analysis
+        if "comprehensive_analysis" in result:
+            analysis_manager.save_analysis_result(
+                analysis_id, 
+                "comprehensive", 
+                result["comprehensive_analysis"]
+            )
+        
+        # Update metadata with completion info
+        metadata = analysis_manager.get_analysis_metadata(analysis_id)
+        if metadata:
+            metadata["analysis_info"]["status"] = "completed"
+            metadata["analysis_info"]["completed_at"] = datetime.utcnow().isoformat()
+            analysis_manager.save_analysis_metadata(analysis_id, metadata)
 
-        set_state(job["job_id"], state="done", stage="finalizing", progress=100, result_path=path)
-        publish_update(job["job_id"], {"type": "done", "result_url": path})
+        set_state(job["job_id"], state="done", stage="finalizing", progress=100)
+        publish_update(job["job_id"], {"type": "done"})
         self.update_state(state="PROGRESS", meta={"stage": "finalizing", "progress": 95})
-        return {"result_path": path}
+        return {"analysis_id": analysis_id}
     except Exception as e:
         # Let Celery capture the exception type and message
         set_state(job.get("job_id", "unknown"), state="error", stage="failed", error=type(e).__name__)

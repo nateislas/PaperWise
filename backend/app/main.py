@@ -7,7 +7,7 @@ from typing import Optional
 import aiofiles
 import uuid
 
-from app.routers import analysis
+from app.routers import analysis, analyses
 from app.config import settings
 
 app = FastAPI(
@@ -28,6 +28,7 @@ app.add_middleware(
 
 # Include routers
 app.include_router(analysis.router, prefix="/api/v1")
+app.include_router(analyses.router, prefix="/api/v1")
 
 # Serve uploaded files (including extracted figure images)
 app.mount(
