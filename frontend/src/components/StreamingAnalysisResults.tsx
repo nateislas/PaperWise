@@ -138,10 +138,8 @@ const StreamingAnalysisResults: React.FC<StreamingAnalysisResultsProps> = ({
     };
 
     try {
-      // Bypass CRA proxy for streaming to avoid buffering issues
-      const streamUrl = process.env.NODE_ENV === 'development' 
-        ? 'http://localhost:8000/api/v1/analyze/stream'
-        : '/api/v1/analyze/stream';
+      // Always use the full backend URL for streaming to ensure it works
+      const streamUrl = `${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/api/v1/analyze/stream`;
         
       const response = await fetch(streamUrl, {
         method: 'POST',
@@ -214,8 +212,12 @@ const StreamingAnalysisResults: React.FC<StreamingAnalysisResultsProps> = ({
 
   useEffect(() => {
     // Auto-start streaming when component mounts
+    console.log('🔍 StreamingAnalysisResults useEffect:', { fileId, isStreaming, analysis });
     if (fileId && !isStreaming && !analysis) {
+      console.log('🚀 Starting streaming with fileId:', fileId);
       startStreaming();
+    } else if (!fileId) {
+      console.log('⚠️ No fileId provided, cannot start streaming');
     }
     
     return () => {

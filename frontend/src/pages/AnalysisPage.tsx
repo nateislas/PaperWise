@@ -41,9 +41,13 @@ const AnalysisPage: React.FC<AnalysisPageProps> = () => {
       // Extract fileId from original_filename if analysis is in progress
       if (metadata.analysis_info.status === 'processing' || metadata.analysis_info.status === 'queued') {
         const originalFilename = metadata.paper_info.original_filename;
+        console.log('🔍 Extracting fileId from:', originalFilename);
         if (originalFilename && '_' in originalFilename) {
           const extractedFileId = originalFilename.split('_')[0];
+          console.log('✅ Extracted fileId:', extractedFileId);
           setFileId(extractedFileId);
+        } else {
+          console.log('⚠️ Could not extract fileId from filename:', originalFilename);
         }
         return; // Don't fetch results yet, let streaming handle it
       }
