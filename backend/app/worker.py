@@ -7,7 +7,7 @@ import asyncio
 
 from app.config import settings
 from app.agents.orchestrator_agent import OrchestratorAgent
-from app.job_state import set_state
+from app.job_state import set_state, publish_update
 
 
 celery_app = Celery(
@@ -61,16 +61,19 @@ def analyze_job(self, job: Dict[str, Any]) -> Dict[str, Any]:
                     stage_msg = chunk.get("message", "processing")
                     set_state(job["job_id"], state="processing", stage=stage_msg, progress=progress if isinstance(progress, int) else None)
                     self.update_state(state="PROGRESS", meta={"stage": stage_msg, "progress": progress or 0})
+                    publish_update(job["job_id"], {"type": "status", "stage": stage_msg, "progress": progress or 0})
                 elif ctype in ("methodology_chunk", "results_chunk", "contextualization_chunk", "synthesis_chunk"):
                     # Update coarse progress if provided
                     if isinstance(progress, int):
                         set_state(job["job_id"], state="processing", progress=progress)
+                        publish_update(job["job_id"], {"type": ctype, "progress": progress})
                 elif ctype == "complete":
                     final = {
                         "analysis_id": chunk.get("analysis_id"),
                         "status": chunk.get("status"),
                         "comprehensive_analysis": chunk.get("analysis"),
                     }
+                    publish_update(job["job_id"], {"type": "complete"})
                 elif ctype == "error":
                     raise RuntimeError(chunk.get("message", "analysis_error"))
             return final
@@ -83,11 +86,13 @@ def analyze_job(self, job: Dict[str, Any]) -> Dict[str, Any]:
             json.dump(result, f, ensure_ascii=False)
 
         set_state(job["job_id"], state="done", stage="finalizing", progress=100, result_path=path)
+        publish_update(job["job_id"], {"type": "done", "result_url": path})
         self.update_state(state="PROGRESS", meta={"stage": "finalizing", "progress": 95})
         return {"result_path": path}
     except Exception as e:
         # Let Celery capture the exception type and message
         set_state(job.get("job_id", "unknown"), state="error", stage="failed", error=type(e).__name__)
+        publish_update(job.get("job_id", "unknown"), {"type": "error", "error": type(e).__name__})
         self.update_state(state="FAILURE", meta={"error": type(e).__name__})
         raise
 

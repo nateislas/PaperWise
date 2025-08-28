@@ -12,7 +12,7 @@ import httpx
 from app.agents.orchestrator_agent import OrchestratorAgent
 from app.config import settings
 from app.worker import celery_app, analyze_job
-from app.job_state import init_job, set_state, get_status
+from app.job_state import init_job, set_state, get_status, publish_current_status
 from celery.result import AsyncResult
 
 router = APIRouter()
@@ -333,6 +333,50 @@ async def get_analysis_stream(analysis_id: str):
             "Content-Type": "text/event-stream",
             "Access-Control-Allow-Origin": "*",
             "Access-Control-Allow-Headers": "*",
+        }
+    )
+
+
+@router.get("/jobs/{job_id}/stream")
+async def stream_job_updates(job_id: str):
+    """Server-Sent Events stream for job updates via Redis pub/sub."""
+    import redis
+    import threading
+    r = redis.from_url(settings.redis_url, decode_responses=True)
+    pubsub = r.pubsub(ignore_subscribe_messages=True)
+    channel = f"jobs:{job_id}"
+    pubsub.subscribe(channel)
+
+    stop_event = threading.Event()
+
+    async def event_generator():
+        try:
+            # Immediately publish a snapshot so the client sees initial state
+            publish_current_status(job_id)
+            while not stop_event.is_set():
+                message = pubsub.get_message(timeout=1.0)
+                if message and message.get("type") == "message":
+                    data = message.get("data")
+                    yield f"data: {data}\n\n"
+                await asyncio.sleep(0.2)
+        finally:
+            try:
+                pubsub.unsubscribe(channel)
+                pubsub.close()
+                r.close()
+            except Exception:
+                pass
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "Content-Type": "text/event-stream",
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Headers": "*",
+            "X-Accel-Buffering": "no",
         }
     )
 

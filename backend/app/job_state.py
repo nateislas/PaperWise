@@ -75,3 +75,22 @@ def get_status(job_id: str) -> Dict[str, Any]:
     }
 
 
+def publish_update(job_id: str, event: Dict[str, Any]) -> None:
+    """Publish a JSON event to the job's Redis pub/sub channel."""
+    r = _get_redis()
+    channel = _job_key(job_id)
+    try:
+        r.publish(channel, json.dumps(event, ensure_ascii=False))
+    finally:
+        try:
+            r.close()
+        except Exception:
+            pass
+
+
+def publish_current_status(job_id: str) -> None:
+    """Publish the current status snapshot for a job."""
+    snapshot = get_status(job_id)
+    publish_update(job_id, {"type": "status", **snapshot})
+
+
