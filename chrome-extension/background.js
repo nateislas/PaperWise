@@ -35,6 +35,27 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   }
 });
 
+// Handle messages from content script and popup
+chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
+  console.log('Background received message:', message);
+  
+  if (message.type === 'analyze_paper') {
+    try {
+      await analyzePaper(message.url);
+      sendResponse({ success: true });
+    } catch (error) {
+      console.error('Analysis error from content script:', error);
+      sendResponse({ success: false, error: error.message });
+    }
+  } else if (message.type === 'get_active_jobs') {
+    // Convert Map to array for serialization
+    const jobsArray = Array.from(activeJobs.entries());
+    sendResponse(jobsArray);
+  }
+  
+  return true; // Keep message channel open for async response
+});
+
 // Check if URL is from arXiv
 function isArxivUrl(url) {
   return url.includes('arxiv.org') && (

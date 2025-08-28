@@ -92,13 +92,17 @@ class ArxivContentScript {
         return;
       }
 
-      // Send message to background script
-      chrome.runtime.sendMessage({
+      // Send message to background script and wait for response
+      const response = await chrome.runtime.sendMessage({
         type: 'analyze_paper',
         url: pdfUrl
       });
 
-      this.showMessage('Analysis started! Check the extension popup for progress.', 'success');
+      if (response && response.success) {
+        this.showMessage('Analysis started! Check the extension popup for progress.', 'success');
+      } else {
+        this.showMessage(`Failed to start analysis: ${response?.error || 'Unknown error'}`, 'error');
+      }
 
     } catch (error) {
       console.error('Analysis error:', error);
