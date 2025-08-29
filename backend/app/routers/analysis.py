@@ -264,20 +264,49 @@ async def analyze_paper_stream(request: AnalysisRequest):
     try:
         # Construct file path from file_id
         upload_dir = settings.upload_dir
+        analyses_dir = analysis_manager.analyses_dir
         file_path = None
         
         logger.info(f"🔍 Looking for file with ID: {request.file_id}")
         logger.info(f"📁 Upload directory: {upload_dir}")
+        logger.info(f"📁 Analyses directory: {analyses_dir}")
         
-        # Find the file with the given file_id
-        files_in_dir = os.listdir(upload_dir)
-        logger.info(f"📂 Files in upload directory: {files_in_dir}")
+        # First, try to find the file in analysis directories (for async analyses)
+        if os.path.exists(analyses_dir):
+            analysis_dirs = os.listdir(analyses_dir)
+            logger.info(f"📂 Analysis directories: {analysis_dirs}")
+            
+            for analysis_id in analysis_dirs:
+                analysis_dir = os.path.join(analyses_dir, analysis_id)
+                if os.path.isdir(analysis_dir):
+                    paper_path = os.path.join(analysis_dir, "paper.pdf")
+                    if os.path.exists(paper_path):
+                        # Check if this analysis corresponds to our file_id
+                        metadata_path = os.path.join(analysis_dir, "metadata.json")
+                        if os.path.exists(metadata_path):
+                            try:
+                                with open(metadata_path, 'r') as f:
+                                    metadata = json.load(f)
+                                original_filename = metadata.get("paper_info", {}).get("original_filename", "")
+                                if original_filename.startswith(request.file_id):
+                                    file_path = paper_path
+                                    logger.info(f"✅ Found file in analysis directory: {file_path}")
+                                    break
+                            except Exception as e:
+                                logger.warning(f"⚠️ Error reading metadata for {analysis_id}: {e}")
+                                continue
         
-        for filename in files_in_dir:
-            if filename.startswith(request.file_id):
-                file_path = os.path.join(upload_dir, filename)
-                logger.info(f"✅ Found file: {file_path}")
-                break
+        # If not found in analysis directories, try uploads directory (for direct uploads)
+        if not file_path:
+            logger.info(f"🔍 File not found in analysis directories, checking uploads directory...")
+            files_in_dir = os.listdir(upload_dir)
+            logger.info(f"📂 Files in upload directory: {files_in_dir}")
+            
+            for filename in files_in_dir:
+                if filename.startswith(request.file_id):
+                    file_path = os.path.join(upload_dir, filename)
+                    logger.info(f"✅ Found file in uploads directory: {file_path}")
+                    break
         
         if not file_path or not os.path.exists(file_path):
             logger.error(f"❌ File not found: {file_path}")

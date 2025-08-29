@@ -101,10 +101,35 @@ const StreamingAnalysisResults: React.FC<StreamingAnalysisResultsProps> = ({
         break;
 
       case 'complete':
-        setAnalysis(chunk.analysis);
+        // Parse the comprehensive_analysis if it's a string (wrapped in markdown)
+        let parsedAnalysis = chunk.analysis;
+        if (parsedAnalysis && parsedAnalysis.comprehensive_analysis && typeof parsedAnalysis.comprehensive_analysis === 'string') {
+          try {
+            let cleanedAnalysis = parsedAnalysis.comprehensive_analysis.trim();
+            // Remove markdown code blocks if present
+            if (cleanedAnalysis.startsWith('```json') && cleanedAnalysis.endsWith('```')) {
+              cleanedAnalysis = cleanedAnalysis.slice(7, -3).trim();
+            } else if (cleanedAnalysis.startsWith('```') && cleanedAnalysis.endsWith('```')) {
+              cleanedAnalysis = cleanedAnalysis.slice(3, -3).trim();
+            }
+            // Parse the JSON
+            const parsedComprehensiveAnalysis = JSON.parse(cleanedAnalysis);
+            // Create new analysis object with parsed comprehensive_analysis
+            parsedAnalysis = {
+              ...parsedAnalysis,
+              comprehensive_analysis: parsedComprehensiveAnalysis
+            };
+            console.log('✅ Parsed comprehensive_analysis for onComplete callback');
+          } catch (parseError) {
+            console.error('⚠️ Failed to parse comprehensive_analysis in complete callback:', parseError);
+            // Keep original if parsing fails
+          }
+        }
+        
+        setAnalysis(parsedAnalysis);
         setProgress(100);
         setStatus('Analysis completed successfully');
-        onComplete?.(chunk.analysis);
+        onComplete?.(parsedAnalysis);
         break;
 
       case 'error':
