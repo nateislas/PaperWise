@@ -139,7 +139,7 @@ class PaperWisePopup {
 
     return `
       <div class="job-item" data-job-id="${jobId}">
-        <div class="job-url">${this.formatUrl(job.url)}</div>
+        <div class="job-url">${this.formatJobTitle(job)}</div>
 
         <div class="progress-container">
           <div class="progress-bar">
@@ -224,6 +224,27 @@ class PaperWisePopup {
     } catch (e) {
       return url.substring(0, 50) + '...';
     }
+  }
+
+  formatJobTitle(job) {
+    // Use scraped metadata if available
+    if (job.metadata && job.metadata.title) {
+      const title = job.metadata.title;
+      const authors = job.metadata.authors || [];
+      
+      if (authors.length > 0) {
+        // Show first 2 authors, then "et al." if more
+        const authorDisplay = authors.length <= 2 
+          ? authors.join(', ')
+          : `${authors.slice(0, 2).join(', ')} et al.`;
+        return `${title} by ${authorDisplay}`;
+      } else {
+        return title;
+      }
+    }
+    
+    // Fallback to URL format
+    return this.formatUrl(job.url);
   }
 
   showError(message) {
