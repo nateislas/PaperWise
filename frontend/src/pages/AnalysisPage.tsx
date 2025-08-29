@@ -44,7 +44,7 @@ const AnalysisPage: React.FC<AnalysisPageProps> = () => {
       if (metadata.analysis_info.status === 'processing' || metadata.analysis_info.status === 'queued') {
         const originalFilename = metadata.paper_info.original_filename;
         console.log('🔍 Extracting fileId from:', originalFilename);
-        if (originalFilename && '_' in originalFilename) {
+        if (originalFilename && originalFilename.includes('_')) {
           const extractedFileId = originalFilename.split('_')[0];
           console.log('✅ Extracted fileId:', extractedFileId);
           setFileId(extractedFileId);
