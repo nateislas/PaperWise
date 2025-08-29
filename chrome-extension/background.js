@@ -3,6 +3,8 @@
  * Handles SSE streams, API communication, and notifications
  */
 
+console.log('🧠 PaperWise background script loaded');
+
 const API_BASE_URL = 'http://localhost:8000/api/v1';
 
 // Store active jobs and their SSE connections
@@ -11,7 +13,7 @@ const sseConnections = new Map();
 
 // Initialize extension
 chrome.runtime.onInstalled.addListener(() => {
-  console.log('PaperWise extension installed');
+  console.log('🧠 PaperWise extension installed');
 
   // Create context menu
   chrome.contextMenus.create({
@@ -21,85 +23,143 @@ chrome.runtime.onInstalled.addListener(() => {
     documentUrlPatterns: ['https://arxiv.org/*']
   });
 
+  console.log('🧠 Context menu created for https://arxiv.org/*');
+
   // Load settings
   loadSettings();
 });
 
 // Handle context menu clicks
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
+  console.log('🧠 Context menu clicked:', {
+    menuItemId: info.menuItemId,
+    pageUrl: info.pageUrl,
+    linkUrl: info.linkUrl,
+    tabUrl: tab?.url
+  });
+  
   if (info.menuItemId === 'analyze-paper') {
     const url = info.linkUrl || info.pageUrl;
+    console.log('🧠 Extracted URL from context menu:', url);
+    
     if (url && isArxivUrl(url)) {
+      console.log('🧠 URL is valid arXiv URL, starting analysis');
       await analyzePaper(url);
+    } else {
+      console.log('🧠 URL is not a valid arXiv URL:', url);
     }
   }
 });
 
 // Handle messages from content script and popup
-chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
-  console.log('Background received message:', message);
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  console.log('🧠 Background received message:', {
+    type: message.type,
+    url: message.url,
+    pdfUrl: message.pdfUrl,
+    sender: sender.tab?.url || 'unknown'
+  });
   
   if (message.type === 'analyze_paper') {
-    try {
-      const result = await analyzePaper(message.url);
-      sendResponse({ success: true, jobId: result.jobId });
-    } catch (error) {
-      console.error('Analysis error from content script:', error);
-      sendResponse({ success: false, error: error.message });
-    }
+    console.log('🧠 Processing analyze_paper message with URL:', message.url);
+    
+    // Use Promise.resolve().then() to handle async operations synchronously
+    Promise.resolve().then(async () => {
+      try {
+        const result = await analyzePaper(message.url);
+        console.log('🧠 Analysis started successfully, jobId:', result.jobId);
+        sendResponse({ success: true, jobId: result.jobId });
+      } catch (error) {
+        console.error('🧠 Analysis error from content script:', error);
+        sendResponse({ success: false, error: error.message });
+      }
+    }).catch(error => {
+      console.error('🧠 Unexpected error in analyze_paper:', error);
+      sendResponse({ success: false, error: 'Unexpected error occurred' });
+    });
+    
+    return true; // Keep message channel open for async response
   } else if (message.type === 'get_active_jobs') {
+    console.log('🧠 Returning active jobs');
     // Convert Map to array for serialization
     const jobsArray = Array.from(activeJobs.entries());
     sendResponse(jobsArray);
+    return false; // Synchronous response, no need to keep channel open
+  } else if (message.type === 'cancel_job') {
+    console.log('🧠 Cancelling job:', message.jobId);
+    cancelJob(message.jobId);
+    sendResponse({ success: true });
+    return false; // Synchronous response, no need to keep channel open
+  } else {
+    console.log('🧠 Unknown message type:', message.type);
+    sendResponse({ error: 'Unknown message type' });
+    return false; // Synchronous response, no need to keep channel open
   }
-  
-  return true; // Keep message channel open for async response
 });
 
 // Check if URL is from arXiv
 function isArxivUrl(url) {
-  return url.includes('arxiv.org') && (
+  console.log('🧠 Checking if URL is arXiv:', url);
+  const isArxiv = url.includes('arxiv.org') && (
     url.includes('/pdf/') ||
     url.includes('/abs/') ||
     url.includes('/html/')
   );
+  console.log('🧠 Is arXiv URL:', isArxiv);
+  return isArxiv;
 }
 
 // Extract PDF URL from arXiv page
 function extractPdfUrl(arxivUrl) {
+  console.log('🧠 Extracting PDF URL from:', arxivUrl);
+  
   if (arxivUrl.includes('/pdf/')) {
+    console.log('🧠 Already a PDF URL, returning as-is');
     return arxivUrl;
   }
 
-  // Convert abstract URL to PDF URL
+  // Convert abstract URL to PDF URL (note: arXiv PDFs don't have .pdf extension)
   const match = arxivUrl.match(/arxiv\.org\/(?:abs|html)\/([0-9]+\.[0-9]+)/);
   if (match) {
-    return `https://arxiv.org/pdf/${match[1]}.pdf`;
+    const pdfUrl = `https://arxiv.org/pdf/${match[1]}`;
+    console.log('🧠 Converted to PDF URL:', pdfUrl);
+    return pdfUrl;
   }
 
+  console.log('🧠 Could not extract PDF URL');
   return null;
 }
 
 // Main analysis function
 async function analyzePaper(url) {
+  console.log('🧠 Starting analysis for URL:', url);
+  
   try {
     const pdfUrl = extractPdfUrl(url);
     if (!pdfUrl) {
       throw new Error('Could not extract PDF URL from: ' + url);
     }
 
+    console.log('🧠 Submitting job for PDF URL:', pdfUrl);
+    
     // Submit job
     const jobResponse = await submitJob(pdfUrl);
+    console.log('🧠 Job submission response:', jobResponse);
+    
     if (!jobResponse.job_id) {
       throw new Error('Failed to submit job');
     }
 
     const jobId = jobResponse.job_id;
+    console.log('🧠 Job created with ID:', jobId);
+    
     activeJobs.set(jobId, { url: pdfUrl, submittedAt: Date.now() });
+    console.log('🧠 Job added to active jobs. Total active jobs:', activeJobs.size);
 
     // Start SSE stream (don't await this - let it run in background)
+    console.log('🧠 Starting SSE stream for job:', jobId);
     startSseStream(jobId).catch(error => {
-      console.error('SSE stream error:', error);
+      console.error('🧠 SSE stream error:', error);
     });
 
     // Show initial notification
@@ -108,7 +168,7 @@ async function analyzePaper(url) {
     return { success: true, jobId };
 
   } catch (error) {
-    console.error('Analysis error:', error);
+    console.error('🧠 Analysis error:', error);
     showNotification('Analysis Failed', error.message);
     throw error; // Re-throw so caller can handle it
   }
@@ -135,6 +195,17 @@ async function submitJob(pdfUrl) {
 
 // Start SSE stream for job progress
 async function startSseStream(jobId) {
+  console.log('🧠 Starting SSE stream for job:', jobId);
+  
+  // Note: Our backend doesn't have /jobs/{jobId}/stream endpoint
+  // We need to use the general streaming endpoint with file_id
+  // For now, let's just log that we're not implementing SSE yet
+  console.log('🧠 SSE streaming not implemented yet - job tracking will be done via polling');
+  
+  // TODO: Implement proper SSE streaming when backend supports it
+  return;
+  
+  /*
   const sseUrl = `${API_BASE_URL}/jobs/${jobId}/stream`;
 
   try {
@@ -184,6 +255,7 @@ async function startSseStream(jobId) {
   } finally {
     sseConnections.delete(jobId);
   }
+  */
 }
 
 // Handle SSE events
@@ -297,7 +369,7 @@ async function fetchJobResult(jobId) {
 function showNotification(title, message, jobId = null) {
   const options = {
     type: 'basic',
-    iconUrl: 'icons/icon128.png',
+    iconUrl: 'icons/brain-circuit.png',
     title,
     message
   };
@@ -336,23 +408,7 @@ function loadSettings() {
   });
 }
 
-// Handle messages from popup
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  switch (message.type) {
-    case 'get_active_jobs':
-      sendResponse(Array.from(activeJobs.entries()));
-      break;
-
-    case 'cancel_job':
-      cancelJob(message.jobId);
-      sendResponse({ success: true });
-      break;
-
-    default:
-      sendResponse({ error: 'Unknown message type' });
-  }
-  return true; // Keep message channel open
-});
+// Note: Message handling is done in the main onMessage listener above
 
 // Cancel job (if possible)
 function cancelJob(jobId) {

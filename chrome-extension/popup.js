@@ -20,8 +20,8 @@ class PaperWisePopup {
     // Set up event listeners
     this.setupEventListeners();
 
-    // Auto-refresh every 5 seconds
-    setInterval(() => this.loadJobs(), 5000);
+    // Auto-refresh every 30 seconds (reduced from 5 to minimize log spam)
+    setInterval(() => this.loadJobs(), 30000);
   }
 
   setupEventListeners() {

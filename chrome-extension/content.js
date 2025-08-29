@@ -3,8 +3,11 @@
  * Runs on arXiv pages to enhance user experience
  */
 
+console.log('🧠 PaperWise content script loaded on:', window.location.href);
+
 class ArxivContentScript {
   constructor() {
+    console.log('🧠 ArxivContentScript constructor called');
     this.init();
   }
 
@@ -18,14 +21,24 @@ class ArxivContentScript {
   }
 
   onPageLoad() {
+    console.log('🧠 Content script onPageLoad called');
     // Check if we're on an arXiv page
     if (this.isArxivPage()) {
+      console.log('🧠 On arXiv page, enhancing page');
       this.enhancePage();
+    } else {
+      console.log('🧠 Not on arXiv page, skipping enhancement');
     }
   }
 
   isArxivPage() {
-    return window.location.hostname.includes('arxiv.org');
+    const isArxiv = window.location.hostname.includes('arxiv.org');
+    console.log('🧠 isArxivPage check:', {
+      hostname: window.location.hostname,
+      url: window.location.href,
+      isArxiv: isArxiv
+    });
+    return isArxiv;
   }
 
   enhancePage() {
@@ -85,45 +98,62 @@ class ArxivContentScript {
   }
 
   async analyzeCurrentPage() {
+    console.log('🧠 analyzeCurrentPage called');
     try {
       const pdfUrl = this.extractPdfUrl();
+      console.log('🧠 Extracted PDF URL:', pdfUrl);
+      
       if (!pdfUrl) {
+        console.log('🧠 No PDF URL found');
         this.showMessage('Could not find PDF for this paper', 'error');
         return;
       }
 
+      console.log('🧠 Sending analyze_paper message to background script');
       // Send message to background script and wait for response
       const response = await chrome.runtime.sendMessage({
         type: 'analyze_paper',
         url: pdfUrl
       });
 
+      console.log('🧠 Background script response:', response);
+
       if (response && response.success) {
+        console.log('🧠 Analysis started successfully with jobId:', response.jobId);
         this.showMessage('Analysis started! Check the extension popup for progress.', 'success');
+      } else if (response && response.error) {
+        console.log('🧠 Analysis failed with error:', response.error);
+        this.showMessage(`Failed to start analysis: ${response.error}`, 'error');
       } else {
-        this.showMessage(`Failed to start analysis: ${response?.error || 'Unknown error'}`, 'error');
+        console.log('🧠 Analysis failed: No response or invalid response format');
+        this.showMessage('Failed to start analysis: No response from background script', 'error');
       }
 
     } catch (error) {
-      console.error('Analysis error:', error);
+      console.error('🧠 Analysis error:', error);
       this.showMessage('Failed to start analysis', 'error');
     }
   }
 
   extractPdfUrl() {
     const currentUrl = window.location.href;
+    console.log('🧠 extractPdfUrl called with current URL:', currentUrl);
 
     // If already on PDF page
     if (currentUrl.includes('/pdf/')) {
+      console.log('🧠 Already on PDF page, returning current URL');
       return currentUrl;
     }
 
-    // Extract arXiv ID from current URL
+    // Extract arXiv ID from current URL (note: arXiv PDFs don't have .pdf extension)
     const arxivMatch = currentUrl.match(/arxiv\.org\/(?:abs|html)\/([0-9]+\.[0-9]+)/);
     if (arxivMatch) {
-      return `https://arxiv.org/pdf/${arxivMatch[1]}.pdf`;
+      const pdfUrl = `https://arxiv.org/pdf/${arxivMatch[1]}`;
+      console.log('🧠 Converted abstract URL to PDF URL:', pdfUrl);
+      return pdfUrl;
     }
 
+    console.log('🧠 Could not extract PDF URL from:', currentUrl);
     return null;
   }
 

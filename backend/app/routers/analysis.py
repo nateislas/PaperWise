@@ -326,8 +326,6 @@ async def analyze_paper_stream(request: AnalysisRequest):
                     data = json.dumps(chunk, ensure_ascii=False)
                     stream_data = f"data: {data}\n\n"
                     
-                    logger.info(f"📤 Yielding chunk #{chunk_count}: type={chunk.get('type', 'unknown')}, progress={chunk.get('progress', 'N/A')}, content_length={len(chunk.get('content', ''))}")
-                    
                     yield stream_data
                     
                     # Ensure chunks are flushed immediately

@@ -57,7 +57,6 @@ class BaseAgent(ABC):
             chunk_count = 0
             async for chunk in self._call_llama_stream(messages):
                 chunk_count += 1
-                logger.info(f"📤 {self.name}: Yielding analysis chunk #{chunk_count} (length: {len(chunk)})")
                 yield chunk
                 
             logger.info(f"✅ {self.name}: Streaming analysis completed with {chunk_count} chunks")
@@ -155,7 +154,6 @@ class BaseAgent(ABC):
                     # Yield when buffer reaches chunk size
                     if len(buffer) >= settings.stream_chunk_size:
                         chunk_count += 1
-                        logger.info(f"📤 {self.name}: Yielding chunk #{chunk_count} (length: {len(buffer)})")
                         yield buffer
                         buffer = ""
                         # Small delay to prevent overwhelming
@@ -164,7 +162,6 @@ class BaseAgent(ABC):
             # Yield any remaining content
             if buffer:
                 chunk_count += 1
-                logger.info(f"📤 {self.name}: Yielding final chunk #{chunk_count} (length: {len(buffer)})")
                 yield buffer
             
             elapsed_time = time.time() - start_time
