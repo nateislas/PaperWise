@@ -35,6 +35,8 @@ const AnalysisPage: React.FC<AnalysisPageProps> = () => {
       }
 
       const metadata = await metadataResponse.json();
+      console.log('📊 Analysis status:', metadata.analysis_info.status);
+      console.log('📋 Full metadata:', metadata);
       setAnalysisStatus(metadata.analysis_info.status);
       setMetadata(metadata);
 
@@ -134,7 +136,10 @@ const AnalysisPage: React.FC<AnalysisPageProps> = () => {
   }
 
   // If analysis is still in progress, show streaming interface
+  console.log('🎯 Render logic - analysisStatus:', analysisStatus);
   if (analysisStatus === 'processing' || analysisStatus === 'queued') {
+    console.log('🔄 Showing streaming interface');
+    console.log('📤 Passing fileId to StreamingAnalysisResults:', fileId);
     return (
       <div className="min-h-screen bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -155,6 +160,7 @@ const AnalysisPage: React.FC<AnalysisPageProps> = () => {
 
   // If analysis is completed, show results
   if (analysis) {
+    console.log('✅ Showing completed analysis results');
     return (
       <div className="min-h-screen bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
