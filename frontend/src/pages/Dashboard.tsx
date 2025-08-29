@@ -115,60 +115,37 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div className="flex items-center">
-              <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                  <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <h1 className="text-2xl font-bold text-gray-900">PaperWise</h1>
-              </div>
-              <p className="ml-4 text-gray-500">AI Research Paper Analysis</p>
-            </div>
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={() => {
-                  console.log('🔄 Manual refresh triggered');
-                  setRefreshing(true);
-                  fetchAnalyses();
-                  fetchStats();
-                }}
-                disabled={refreshing}
-                className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
-                  refreshing 
-                    ? 'text-gray-400 cursor-not-allowed' 
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                }`}
-                title="Refresh analyses"
-              >
-                <svg className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-                <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
-              </button>
-              <Link
-                to="/upload"
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                Upload New Paper
-              </Link>
-            </div>
-          </div>
-        </div>
-      </header>
-
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Welcome Section */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
-          <h2 className="text-xl font-semibold text-gray-900 mb-3">Welcome to PaperWise</h2>
-          <p className="text-gray-700 leading-relaxed">
+        {/* Centered Blurb */}
+        <div className="text-center mb-12">
+          <h1 className="text-4xl font-bold text-gray-900 mb-6">AI-Powered Research Paper Analysis</h1>
+          <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
             Upload your research paper to PaperWise and get instant, in-depth analysis. Our AI agent goes beyond a simple summary, providing you with a critical breakdown of the methodology, key findings, and contributions to the field—just like a fellow researcher would.
           </p>
+        </div>
+
+        {/* Refresh Button */}
+        <div className="flex justify-end mb-6">
+          <button
+            onClick={() => {
+              console.log('🔄 Manual refresh triggered');
+              setRefreshing(true);
+              fetchAnalyses();
+              fetchStats();
+            }}
+            disabled={refreshing}
+            className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors ${
+              refreshing 
+                ? 'text-gray-400 cursor-not-allowed' 
+                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+            }`}
+            title="Refresh analyses"
+          >
+            <svg className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            <span className="text-sm">{refreshing ? 'Refreshing...' : 'Refresh'}</span>
+          </button>
         </div>
 
         {/* Stats Cards */}
