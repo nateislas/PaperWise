@@ -112,9 +112,11 @@ class AnalysisManager:
         for analysis_id in analysis_dirs:
             metadata = self.get_analysis_metadata(analysis_id)
             if metadata:
+                # Format the data to match frontend expectations
+                formatted_metadata = self._format_metadata_for_frontend(metadata)
                 analyses.append({
                     "analysis_id": analysis_id,
-                    **metadata
+                    **formatted_metadata
                 })
         
         return analyses
@@ -131,6 +133,52 @@ class AnalysisManager:
         # Fallback to directory creation time
         analysis_dir = os.path.join(self.analyses_dir, analysis_id)
         return os.path.getctime(analysis_dir)
+    
+    def _format_metadata_for_frontend(self, metadata: Dict[str, Any]) -> Dict[str, Any]:
+        """Format metadata to match frontend expectations"""
+        formatted = metadata.copy()
+        
+        # Ensure paper_info exists
+        if "paper_info" not in formatted:
+            formatted["paper_info"] = {}
+        
+        paper_info = formatted["paper_info"]
+        
+        # Handle authors field - convert string to array if needed
+        if "author" in paper_info and "authors" not in paper_info:
+            # If we have a single author string, convert to array
+            author_str = paper_info["author"]
+            if author_str and author_str != "Unknown":
+                # Split by common delimiters and clean up
+                if ";" in author_str:
+                    authors = [author.strip() for author in author_str.split(";") if author.strip()]
+                elif "," in author_str:
+                    authors = [author.strip() for author in author_str.split(",") if author.strip()]
+                else:
+                    authors = [author_str.strip()]
+                paper_info["authors"] = authors
+            else:
+                paper_info["authors"] = []
+        elif "authors" not in paper_info:
+            paper_info["authors"] = []
+        
+        # Ensure required fields exist with defaults
+        if "title" not in paper_info:
+            paper_info["title"] = "Unknown Paper"
+        if "arxiv_id" not in paper_info:
+            paper_info["arxiv_id"] = ""
+        if "upload_date" not in paper_info:
+            paper_info["upload_date"] = formatted.get("created_at", "")
+        
+        # Ensure analysis_info exists
+        if "analysis_info" not in formatted:
+            formatted["analysis_info"] = {
+                "type": "comprehensive",
+                "status": "unknown",
+                "started_at": formatted.get("created_at", ""),
+            }
+        
+        return formatted
     
     def search_analyses(self, query: str) -> List[Dict[str, Any]]:
         """Search analyses by paper title, authors, or arXiv ID"""

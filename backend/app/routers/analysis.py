@@ -39,6 +39,7 @@ class AsyncAnalyzeRequest(BaseModel):
     pdf_url: Optional[str] = None
     query: Optional[str] = None
     analysis_type: str = "comprehensive"
+    metadata: Optional[Dict[str, Any]] = None
 
     @field_validator("pdf_url")
     @classmethod
@@ -190,9 +191,9 @@ async def analyze_paper_async(request: AsyncAnalyzeRequest):
         metadata = {
             "paper_info": {
                 "original_filename": paper_filename,
-                "arxiv_id": _extract_arxiv_id_from_filename(paper_filename),
-                "title": _extract_title_from_filename(paper_filename),
-                "authors": [],  # Will be extracted during analysis
+                "arxiv_id": "",
+                "title": "Unknown Paper",
+                "authors": [],
                 "upload_date": datetime.utcnow().isoformat()
             },
             "analysis_info": {
@@ -202,6 +203,32 @@ async def analyze_paper_async(request: AsyncAnalyzeRequest):
                 "status": "queued"
             }
         }
+
+        # Use scraped metadata if available (from Chrome extension)
+        if request.metadata:
+            logger.info(f"Using scraped metadata: {request.metadata}")
+            scraped = request.metadata
+            
+            # Update paper_info with scraped data
+            if scraped.get("arxiv_id"):
+                metadata["paper_info"]["arxiv_id"] = scraped["arxiv_id"]
+            if scraped.get("title"):
+                metadata["paper_info"]["title"] = scraped["title"]
+            if scraped.get("authors") and isinstance(scraped["authors"], list):
+                metadata["paper_info"]["authors"] = scraped["authors"]
+            if scraped.get("author"):
+                metadata["paper_info"]["author"] = scraped["author"]
+            if scraped.get("abstract"):
+                metadata["paper_info"]["abstract"] = scraped["abstract"]
+            if scraped.get("submission_date"):
+                metadata["paper_info"]["submission_date"] = scraped["submission_date"]
+            if scraped.get("subjects"):
+                metadata["paper_info"]["subjects"] = scraped["subjects"]
+        else:
+            # Fallback to filename extraction
+            logger.info("No scraped metadata available, using filename extraction")
+            metadata["paper_info"]["arxiv_id"] = _extract_arxiv_id_from_filename(paper_filename)
+            metadata["paper_info"]["title"] = _extract_title_from_filename(paper_filename)
         
         # Save metadata
         analysis_manager.save_analysis_metadata(analysis_id, metadata)

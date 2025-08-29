@@ -50,6 +50,9 @@ async def get_analysis(analysis_id: str = Path(..., description="Analysis ID")):
         if not metadata:
             raise HTTPException(status_code=404, detail="Analysis not found")
         
+        # Format metadata for frontend
+        formatted_metadata = analysis_manager._format_metadata_for_frontend(metadata)
+        
         # Get available result types
         analysis_dir = os.path.join(analysis_manager.analyses_dir, analysis_id, "results")
         result_types = []
@@ -59,7 +62,7 @@ async def get_analysis(analysis_id: str = Path(..., description="Analysis ID")):
         
         return {
             "analysis_id": analysis_id,
-            **metadata,
+            **formatted_metadata,
             "available_results": result_types
         }
     except HTTPException:
