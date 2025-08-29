@@ -109,11 +109,15 @@ class ArxivContentScript {
         return;
       }
 
+      const metadata = this.getPaperMetadata();
+      console.log('🧠 Extracted metadata for analysis:', metadata);
+
       console.log('🧠 Sending analyze_paper message to background script');
       // Send message to background script and wait for response
       const response = await chrome.runtime.sendMessage({
         type: 'analyze_paper',
-        url: pdfUrl
+        url: pdfUrl,
+        metadata: metadata
       });
 
       console.log('🧠 Background script response:', response);
@@ -251,24 +255,73 @@ class ArxivContentScript {
   getPaperMetadata() {
     const metadata = {};
 
+    // Extract arXiv ID from URL
+    const arxivMatch = window.location.href.match(/arxiv\.org\/(?:abs|pdf|html)\/([0-9]+\.[0-9]+)/);
+    if (arxivMatch) {
+      metadata.arxiv_id = arxivMatch[1];
+    }
+
     // Try to extract title
     const titleElement = document.querySelector('h1.title, .title');
     if (titleElement) {
-      metadata.title = titleElement.textContent.trim();
+      let title = titleElement.textContent.trim();
+      
+      // Clean up common prefixes that might be included
+      const prefixesToRemove = ['Title:', 'Title', 'Paper:', 'Paper'];
+      for (const prefix of prefixesToRemove) {
+        if (title.startsWith(prefix)) {
+          title = title.substring(prefix.length).trim();
+          break;
+        }
+      }
+      
+      metadata.title = title;
     }
 
     // Try to extract authors
     const authorElements = document.querySelectorAll('.authors a, .author');
     if (authorElements.length > 0) {
       metadata.authors = Array.from(authorElements).map(el => el.textContent.trim());
+      // Also set the first author as the main author
+      if (metadata.authors.length > 0) {
+        metadata.author = metadata.authors[0];
+      }
     }
 
     // Try to extract abstract
     const abstractElement = document.querySelector('.abstract, #abstract');
     if (abstractElement) {
-      metadata.abstract = abstractElement.textContent.trim();
+      let abstract = abstractElement.textContent.trim();
+      
+      // Clean up common prefixes that might be included
+      const prefixesToRemove = ['Abstract:', 'Abstract', 'Summary:', 'Summary'];
+      for (const prefix of prefixesToRemove) {
+        if (abstract.startsWith(prefix)) {
+          abstract = abstract.substring(prefix.length).trim();
+          break;
+        }
+      }
+      
+      metadata.abstract = abstract;
     }
 
+    // Try to extract submission date
+    const submissionElement = document.querySelector('.dateline');
+    if (submissionElement) {
+      const submissionText = submissionElement.textContent;
+      const dateMatch = submissionText.match(/Submitted on (\d+ \w+ \d+)/);
+      if (dateMatch) {
+        metadata.submission_date = dateMatch[1];
+      }
+    }
+
+    // Try to extract subjects/categories
+    const subjectsElement = document.querySelector('.primary-subject');
+    if (subjectsElement) {
+      metadata.subjects = subjectsElement.textContent.trim();
+    }
+
+    console.log('🧠 Extracted metadata from arXiv page:', metadata);
     return metadata;
   }
 }

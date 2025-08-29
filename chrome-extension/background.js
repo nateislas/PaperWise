@@ -62,11 +62,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   
   if (message.type === 'analyze_paper') {
     console.log('🧠 Processing analyze_paper message with URL:', message.url);
+    console.log('🧠 Message metadata:', message.metadata);
     
     // Use Promise.resolve().then() to handle async operations synchronously
     Promise.resolve().then(async () => {
       try {
-        const result = await analyzePaper(message.url);
+        const result = await analyzePaper(message.url, message.metadata);
         console.log('🧠 Analysis started successfully, jobId:', result.jobId);
         sendResponse({ success: true, jobId: result.jobId });
       } catch (error) {
@@ -131,8 +132,9 @@ function extractPdfUrl(arxivUrl) {
 }
 
 // Main analysis function
-async function analyzePaper(url) {
+async function analyzePaper(url, metadata = null) {
   console.log('🧠 Starting analysis for URL:', url);
+  console.log('🧠 Metadata:', metadata);
   
   try {
     const pdfUrl = extractPdfUrl(url);
@@ -142,8 +144,8 @@ async function analyzePaper(url) {
 
     console.log('🧠 Submitting job for PDF URL:', pdfUrl);
     
-    // Submit job
-    const jobResponse = await submitJob(pdfUrl);
+    // Submit job with metadata
+    const jobResponse = await submitJob(pdfUrl, metadata);
     console.log('🧠 Job submission response:', jobResponse);
     
     if (!jobResponse.job_id) {
@@ -153,7 +155,7 @@ async function analyzePaper(url) {
     const jobId = jobResponse.job_id;
     console.log('🧠 Job created with ID:', jobId);
     
-    activeJobs.set(jobId, { url: pdfUrl, submittedAt: Date.now() });
+    activeJobs.set(jobId, { url: pdfUrl, submittedAt: Date.now(), metadata: metadata });
     console.log('🧠 Job added to active jobs. Total active jobs:', activeJobs.size);
 
     // Start SSE stream (don't await this - let it run in background)
@@ -163,7 +165,8 @@ async function analyzePaper(url) {
     });
 
     // Show initial notification
-    showNotification('Analysis Started', `Analyzing paper: ${pdfUrl.split('/').pop()}`);
+    const paperTitle = metadata?.title || pdfUrl.split('/').pop();
+    showNotification('Analysis Started', `Analyzing paper: ${paperTitle}`);
 
     return { success: true, jobId };
 
@@ -175,15 +178,24 @@ async function analyzePaper(url) {
 }
 
 // Submit job to PaperWise API
-async function submitJob(pdfUrl) {
+async function submitJob(pdfUrl, metadata = null) {
+  const requestBody = {
+    pdf_url: pdfUrl
+  };
+
+  // Add metadata if available
+  if (metadata) {
+    requestBody.metadata = metadata;
+  }
+
+  console.log('🧠 Submitting job with request body:', requestBody);
+
   const response = await fetch(`${API_BASE_URL}/analyze/async`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
-      pdf_url: pdfUrl
-    })
+    body: JSON.stringify(requestBody)
   });
 
   if (!response.ok) {
