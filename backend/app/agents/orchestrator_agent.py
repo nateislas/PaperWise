@@ -96,6 +96,7 @@ Present the analysis in a clear, organized manner that would be valuable to PhD 
             documents = pdf_result["documents"]
             parsed_content = pdf_result["parsed_content"]
             parsed_figures = parsed_content.get("figures", []) if isinstance(parsed_content, dict) else []
+            paper_metadata = pdf_result.get("metadata", {})
             
             yield {
                 "type": "status",
@@ -314,6 +315,8 @@ Present the analysis in a clear, organized manner that would be valuable to PhD 
             final_report["field_confidence"] = field_confidence
             final_report["sections"] = structured_sections
             final_report["figures"] = parsed_figures
+            # Attach paper metadata
+            final_report["paper_info"] = paper_metadata
             
             # Send final result
             yield {

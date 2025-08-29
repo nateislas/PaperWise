@@ -94,7 +94,9 @@ Provide clean, well-structured content that can be used by other analysis agents
         """Extract metadata from the PDF"""
         try:
             metadata = doc.metadata
-            return {
+            
+            # Extract basic metadata from PDF
+            basic_metadata = {
                 "title": metadata.get("title", "Unknown"),
                 "author": metadata.get("author", "Unknown"),
                 "subject": metadata.get("subject", ""),
@@ -104,6 +106,31 @@ Provide clean, well-structured content that can be used by other analysis agents
                 "file_size": os.path.getsize(doc.name) if hasattr(doc, 'name') else 0,
                 "parsed_at": datetime.now().isoformat()
             }
+            
+            # Log the basic metadata for debugging
+            logger.info(f"Basic metadata extracted - Title: '{basic_metadata['title']}', Author: '{basic_metadata['author']}'")
+            
+            # If basic metadata is missing or generic, try LLM extraction
+            if (basic_metadata["title"] == "Unknown" or 
+                basic_metadata["author"] == "Unknown" or
+                basic_metadata["title"] == "" or
+                basic_metadata["author"] == ""):
+                
+                logger.info("Basic metadata missing, attempting LLM extraction")
+                llm_metadata = self._extract_metadata_with_llm(doc)
+                
+                # Merge LLM metadata with basic metadata, preferring LLM results
+                if llm_metadata.get("title") and llm_metadata["title"] != "Unknown":
+                    basic_metadata["title"] = llm_metadata["title"]
+                if llm_metadata.get("author") and llm_metadata["author"] != "Unknown":
+                    basic_metadata["author"] = llm_metadata["author"]
+                if llm_metadata.get("authors"):
+                    basic_metadata["authors"] = llm_metadata["authors"]
+            else:
+                logger.info("Basic metadata is present, skipping LLM extraction")
+            
+            return basic_metadata
+            
         except Exception as e:
             logger.warning(f"Error extracting metadata: {str(e)}")
             return {
@@ -128,6 +155,99 @@ Provide clean, well-structured content that can be used by other analysis agents
                 continue
         
         return "\n\n".join(text_content)
+    
+    def _extract_metadata_with_llm(self, doc) -> Dict[str, Any]:
+        """Extract paper metadata using LLM from the first few pages"""
+        try:
+            # Extract text from first 3 pages (usually contains title, authors, abstract)
+            first_pages_text = ""
+            for page_num in range(min(3, len(doc))):
+                try:
+                    page = doc.load_page(page_num)
+                    text = page.get_text()
+                    if text.strip():
+                        first_pages_text += f"\n--- Page {page_num + 1} ---\n{text}"
+                except Exception as e:
+                    logger.warning(f"Error extracting text from page {page_num + 1}: {str(e)}")
+                    continue
+            
+            if not first_pages_text.strip():
+                return {"title": "Unknown", "author": "Unknown"}
+            
+            # Create prompt for LLM metadata extraction
+            prompt = f"""Extract the paper title and authors from the following text. This is from the first few pages of a research paper.
+
+Text:
+{first_pages_text[:2000]}  # Limit to first 2000 chars to avoid token limits
+
+Please extract and return ONLY a JSON object with the following structure:
+{{
+    "title": "The exact paper title",
+    "author": "First author name",
+    "authors": ["List of all author names"]
+}}
+
+Rules:
+1. Extract the main paper title, not section titles
+2. Include all authors if multiple
+3. Use the exact names as they appear
+4. If you can't find clear title/author information, use "Unknown"
+5. Return ONLY the JSON object, no other text
+
+JSON:"""
+            
+            # Call LLM to extract metadata
+            response = self._call_llama([{"role": "user", "content": prompt}])
+            
+            if not response:
+                return {"title": "Unknown", "author": "Unknown"}
+            
+            # Try to parse JSON response
+            try:
+                import json
+                # Clean the response to extract just the JSON
+                response_text = response.strip()
+                if response_text.startswith("```json"):
+                    response_text = response_text[7:]
+                if response_text.endswith("```"):
+                    response_text = response_text[:-3]
+                
+                metadata = json.loads(response_text.strip())
+                
+                # Validate and clean the extracted metadata
+                title = metadata.get("title", "Unknown")
+                author = metadata.get("author", "Unknown")
+                authors = metadata.get("authors", [])
+                
+                # Clean up the data
+                if title and title != "Unknown" and len(title) > 3:
+                    title = title.strip()
+                else:
+                    title = "Unknown"
+                
+                if author and author != "Unknown" and len(author) > 2:
+                    author = author.strip()
+                else:
+                    author = "Unknown"
+                
+                if authors and isinstance(authors, list):
+                    authors = [a.strip() for a in authors if a and a.strip() and a.strip() != "Unknown"]
+                
+                logger.info(f"LLM extracted metadata - Title: {title}, Author: {author}")
+                
+                return {
+                    "title": title,
+                    "author": author,
+                    "authors": authors
+                }
+                
+            except (json.JSONDecodeError, KeyError) as e:
+                logger.warning(f"Failed to parse LLM metadata response: {str(e)}")
+                return {"title": "Unknown", "author": "Unknown"}
+                
+        except Exception as e:
+            logger.warning(f"Error in LLM metadata extraction: {str(e)}")
+            return {"title": "Unknown", "author": "Unknown"}
     
     def _extract_tables(self, doc) -> List[Dict[str, Any]]:
         """Extract tables from the PDF"""
