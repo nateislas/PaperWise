@@ -19,6 +19,63 @@ interface AnalysisResultsProps {
   isLoading: boolean;
 }
 
+function repairTruncatedJson(jsonStr: string): string {
+  try {
+    JSON.parse(jsonStr);
+    return jsonStr;
+  } catch (e) {}
+
+  let repaired = jsonStr.trim();
+  if (repaired.startsWith('```json')) {
+    repaired = repaired.slice(7).trim();
+  } else if (repaired.startsWith('```')) {
+    repaired = repaired.slice(3).trim();
+  }
+  if (repaired.endsWith('```')) {
+    repaired = repaired.slice(0, -3).trim();
+  }
+
+  let inString = false;
+  let escape = false;
+  const stack: string[] = [];
+
+  for (let i = 0; i < repaired.length; i++) {
+    const char = repaired[i];
+    if (escape) {
+      escape = false;
+      continue;
+    }
+    if (char === '\\') {
+      escape = true;
+      continue;
+    }
+    if (char === '"') {
+      inString = !inString;
+      continue;
+    }
+    if (!inString) {
+      if (char === '{' || char === '[') {
+        stack.push(char === '{' ? '}' : ']');
+      } else if (char === '}' || char === ']') {
+        if (stack.length > 0 && stack[stack.length - 1] === char) {
+          stack.pop();
+        }
+      }
+    }
+  }
+
+  if (inString) {
+    repaired += '"';
+  }
+
+  while (stack.length > 0) {
+    const closingChar = stack.pop();
+    repaired += closingChar;
+  }
+
+  return repaired;
+}
+
 const AnalysisResults: React.FC<AnalysisResultsProps> = ({ analysis, isLoading }) => {
   const [showTableOfContents, setShowTableOfContents] = useState(false);
   const [showBackToTop, setShowBackToTop] = useState(false);
@@ -52,11 +109,26 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({ analysis, isLoading }
   }
 
   // Handle the response structure from the backend
-  const comprehensive_analysis = analysis.analysis || analysis.comprehensive_analysis || analysis;
-  const detectedField: string | undefined = analysis.field || comprehensive_analysis.field;
-  const subfield: string | undefined = analysis.subfield || comprehensive_analysis.subfield;
-  const conferences: string[] | undefined = analysis.conferences || comprehensive_analysis.conferences;
-  const fieldConfidence: number | undefined = analysis.field_confidence || comprehensive_analysis.field_confidence;
+  let comprehensive_analysis = analysis.analysis || analysis.comprehensive_analysis || analysis;
+  
+  // Try to repair and parse comprehensive_analysis if it's a string
+  if (typeof comprehensive_analysis === 'string') {
+    try {
+      const repaired = repairTruncatedJson(comprehensive_analysis);
+      comprehensive_analysis = JSON.parse(repaired);
+    } catch (e) {
+      console.warn('Failed to parse comprehensive_analysis string:', e);
+      // Fallback structure to display the raw string as executive summary
+      comprehensive_analysis = {
+        executive_summary: comprehensive_analysis
+      };
+    }
+  }
+
+  const detectedField: string | undefined = analysis.field || comprehensive_analysis?.field;
+  const subfield: string | undefined = analysis.subfield || comprehensive_analysis?.subfield;
+  const conferences: string[] | undefined = analysis.conferences || comprehensive_analysis?.conferences;
+  const fieldConfidence: number | undefined = analysis.field_confidence || comprehensive_analysis?.field_confidence;
   
   // Add defensive checks to prevent destructuring errors
   if (!comprehensive_analysis || typeof comprehensive_analysis !== 'object') {

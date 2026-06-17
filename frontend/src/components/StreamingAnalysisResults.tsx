@@ -20,6 +20,63 @@ interface StreamingAnalysisResultsProps {
   onError?: (error: string) => void;
 }
 
+function repairTruncatedJson(jsonStr: string): string {
+  try {
+    JSON.parse(jsonStr);
+    return jsonStr;
+  } catch (e) {}
+
+  let repaired = jsonStr.trim();
+  if (repaired.startsWith('```json')) {
+    repaired = repaired.slice(7).trim();
+  } else if (repaired.startsWith('```')) {
+    repaired = repaired.slice(3).trim();
+  }
+  if (repaired.endsWith('```')) {
+    repaired = repaired.slice(0, -3).trim();
+  }
+
+  let inString = false;
+  let escape = false;
+  const stack: string[] = [];
+
+  for (let i = 0; i < repaired.length; i++) {
+    const char = repaired[i];
+    if (escape) {
+      escape = false;
+      continue;
+    }
+    if (char === '\\') {
+      escape = true;
+      continue;
+    }
+    if (char === '"') {
+      inString = !inString;
+      continue;
+    }
+    if (!inString) {
+      if (char === '{' || char === '[') {
+        stack.push(char === '{' ? '}' : ']');
+      } else if (char === '}' || char === ']') {
+        if (stack.length > 0 && stack[stack.length - 1] === char) {
+          stack.pop();
+        }
+      }
+    }
+  }
+
+  if (inString) {
+    repaired += '"';
+  }
+
+  while (stack.length > 0) {
+    const closingChar = stack.pop();
+    repaired += closingChar;
+  }
+
+  return repaired;
+}
+
 interface StreamChunk {
   type: string;
   analysis_id?: string;
@@ -105,15 +162,8 @@ const StreamingAnalysisResults: React.FC<StreamingAnalysisResultsProps> = ({
         let parsedAnalysis = chunk.analysis;
         if (parsedAnalysis && parsedAnalysis.comprehensive_analysis && typeof parsedAnalysis.comprehensive_analysis === 'string') {
           try {
-            let cleanedAnalysis = parsedAnalysis.comprehensive_analysis.trim();
-            // Remove markdown code blocks if present
-            if (cleanedAnalysis.startsWith('```json') && cleanedAnalysis.endsWith('```')) {
-              cleanedAnalysis = cleanedAnalysis.slice(7, -3).trim();
-            } else if (cleanedAnalysis.startsWith('```') && cleanedAnalysis.endsWith('```')) {
-              cleanedAnalysis = cleanedAnalysis.slice(3, -3).trim();
-            }
-            // Parse the JSON
-            const parsedComprehensiveAnalysis = JSON.parse(cleanedAnalysis);
+            const repaired = repairTruncatedJson(parsedAnalysis.comprehensive_analysis);
+            const parsedComprehensiveAnalysis = JSON.parse(repaired);
             // Create new analysis object with parsed comprehensive_analysis
             parsedAnalysis = {
               ...parsedAnalysis,

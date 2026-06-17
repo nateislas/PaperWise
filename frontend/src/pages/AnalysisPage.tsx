@@ -5,6 +5,63 @@ import StreamingAnalysisResults from '../components/StreamingAnalysisResults';
 
 interface AnalysisPageProps {}
 
+function repairTruncatedJson(jsonStr: string): string {
+  try {
+    JSON.parse(jsonStr);
+    return jsonStr;
+  } catch (e) {}
+
+  let repaired = jsonStr.trim();
+  if (repaired.startsWith('```json')) {
+    repaired = repaired.slice(7).trim();
+  } else if (repaired.startsWith('```')) {
+    repaired = repaired.slice(3).trim();
+  }
+  if (repaired.endsWith('```')) {
+    repaired = repaired.slice(0, -3).trim();
+  }
+
+  let inString = false;
+  let escape = false;
+  const stack: string[] = [];
+
+  for (let i = 0; i < repaired.length; i++) {
+    const char = repaired[i];
+    if (escape) {
+      escape = false;
+      continue;
+    }
+    if (char === '\\') {
+      escape = true;
+      continue;
+    }
+    if (char === '"') {
+      inString = !inString;
+      continue;
+    }
+    if (!inString) {
+      if (char === '{' || char === '[') {
+        stack.push(char === '{' ? '}' : ']');
+      } else if (char === '}' || char === ']') {
+        if (stack.length > 0 && stack[stack.length - 1] === char) {
+          stack.pop();
+        }
+      }
+    }
+  }
+
+  if (inString) {
+    repaired += '"';
+  }
+
+  while (stack.length > 0) {
+    const closingChar = stack.pop();
+    repaired += closingChar;
+  }
+
+  return repaired;
+}
+
 const AnalysisPage: React.FC<AnalysisPageProps> = () => {
   const { analysisId } = useParams<{ analysisId: string }>();
   const [analysis, setAnalysis] = useState<any>(null);
@@ -58,13 +115,21 @@ const AnalysisPage: React.FC<AnalysisPageProps> = () => {
       if (status === 'processing' || status === 'queued') {
         const originalFilename = metadata.paper_info?.original_filename;
         console.log('🔍 Extracting fileId from:', originalFilename);
+        let extractedFileId = '';
         if (originalFilename && originalFilename.includes('_')) {
-          const extractedFileId = originalFilename.split('_')[0];
+          extractedFileId = originalFilename.split('_')[0];
           console.log('✅ Extracted fileId:', extractedFileId);
           setFileId(extractedFileId);
         } else {
           console.log('⚠️ Could not extract fileId from filename:', originalFilename);
         }
+        
+        // Set basic metadata so the page layout shows the PDF viewer immediately
+        setAnalysis({
+          analysis_id: analysisId,
+          paper_info: metadata.paper_info,
+          analysis_info: metadata.analysis_info
+        });
         return; // Don't fetch results yet, let streaming handle it
       }
 
@@ -84,14 +149,8 @@ const AnalysisPage: React.FC<AnalysisPageProps> = () => {
         let parsedComprehensiveAnalysis = results.comprehensive_analysis;
         if (typeof parsedComprehensiveAnalysis === 'string') {
           try {
-            // Remove markdown code blocks if present
-            let cleanedAnalysis = parsedComprehensiveAnalysis.trim();
-            if (cleanedAnalysis.startsWith('```json') && cleanedAnalysis.endsWith('```')) {
-              cleanedAnalysis = cleanedAnalysis.slice(7, -3).trim();
-            } else if (cleanedAnalysis.startsWith('```') && cleanedAnalysis.endsWith('```')) {
-              cleanedAnalysis = cleanedAnalysis.slice(3, -3).trim();
-            }
-            parsedComprehensiveAnalysis = JSON.parse(cleanedAnalysis);
+            const repaired = repairTruncatedJson(parsedComprehensiveAnalysis);
+            parsedComprehensiveAnalysis = JSON.parse(repaired);
           } catch (parseError) {
             console.error('Failed to parse comprehensive_analysis:', parseError);
             // Keep as string if parsing fails
@@ -235,28 +294,7 @@ const AnalysisPage: React.FC<AnalysisPageProps> = () => {
     );
   }
 
-  // If analysis is still in progress, show streaming interface
-  console.log('🎯 Render logic - analysisStatus:', analysisStatus);
-  if (analysisStatus === 'processing' || analysisStatus === 'queued') {
-    console.log('🔄 Showing streaming interface');
-    console.log('📤 Passing fileId to StreamingAnalysisResults:', fileId);
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <StreamingAnalysisResults
-            fileId={fileId || ''} // Use extracted fileId for streaming
-            onComplete={(finalAnalysis) => {
-              setAnalysis(finalAnalysis);
-              setAnalysisStatus('completed');
-            }}
-            onError={(errorMessage) => {
-              setError(errorMessage);
-            }}
-          />
-        </div>
-      </div>
-    );
-  }
+  // Early return for streaming interface removed. Live analysis now streams inside the tabbed layout.
 
 
 
@@ -361,7 +399,20 @@ const AnalysisPage: React.FC<AnalysisPageProps> = () => {
           <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
             {activeTab === 'analysis' && (
               <div className="animate-fade-in">
-                <AnalysisResults analysis={analysis} isLoading={false} />
+                {analysisStatus === 'processing' || analysisStatus === 'queued' ? (
+                  <StreamingAnalysisResults
+                    fileId={fileId || ''}
+                    onComplete={(finalAnalysis) => {
+                      setAnalysis(finalAnalysis);
+                      setAnalysisStatus('completed');
+                    }}
+                    onError={(errorMessage) => {
+                      setError(errorMessage);
+                    }}
+                  />
+                ) : (
+                  <AnalysisResults analysis={analysis} isLoading={false} />
+                )}
               </div>
             )}
 
@@ -497,7 +548,8 @@ const AnalysisPage: React.FC<AnalysisPageProps> = () => {
                         key={pidx}
                         type="button"
                         onClick={() => handleSendChatMessage(prompt)}
-                        className="text-[10px] font-bold uppercase tracking-widest bg-white hover:bg-primary-50 text-slate-500 hover:text-primary-600 border border-slate-200 hover:border-primary-200 px-3 py-1.5 rounded-lg transition-all shadow-sm focus-ring"
+                        disabled={analysisStatus === 'processing' || analysisStatus === 'queued'}
+                        className="text-[10px] font-bold uppercase tracking-widest bg-white hover:bg-primary-50 text-slate-500 hover:text-primary-600 border border-slate-200 hover:border-primary-200 px-3 py-1.5 rounded-lg transition-all shadow-sm focus-ring disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {prompt}
                       </button>
@@ -514,16 +566,16 @@ const AnalysisPage: React.FC<AnalysisPageProps> = () => {
                   >
                     <input
                       type="text"
-                      placeholder="Ask the AI about this paper..."
+                      placeholder={analysisStatus === 'processing' || analysisStatus === 'queued' ? "Chat will be available once analysis is complete..." : "Ask the AI about this paper..."}
                       value={chatInput}
                       onChange={(e) => setChatInput(e.target.value)}
-                      disabled={isChatLoading}
+                      disabled={isChatLoading || analysisStatus === 'processing' || analysisStatus === 'queued'}
                       className="flex-1 border border-slate-200 rounded-xl px-5 py-3 text-sm focus-ring bg-slate-50 text-slate-800 placeholder-slate-400 disabled:opacity-50 font-medium"
                       aria-label="Chat input"
                     />
                     <button
                       type="submit"
-                      disabled={isChatLoading || !chatInput.trim()}
+                      disabled={isChatLoading || !chatInput.trim() || analysisStatus === 'processing' || analysisStatus === 'queued'}
                       className="bg-primary-600 hover:bg-primary-700 text-white rounded-xl p-3 transition-all shadow-soft disabled:opacity-50 disabled:cursor-not-allowed focus-ring"
                       aria-label="Send message"
                     >
