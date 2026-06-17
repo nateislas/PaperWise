@@ -6,7 +6,7 @@ import tempfile
 
 # Configure mock settings before importing app
 os.environ["GEMINI_API_KEY"] = "fake-api-key"
-os.environ["LLAMA_API_KEY"] = "fake-api-key"
+os.environ["GEMINI_API_KEY"] = "fake-api-key"
 
 from app.main import app
 from app.config import settings

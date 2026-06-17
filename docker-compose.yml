@@ -8,9 +8,10 @@ services:
     ports:
       - "8081:8000"
     environment:
-      - LLAMA_MODEL=${LLAMA_MODEL:-Llama-4-Maverick-17B-128E-Instruct-FP8}
-      - LLAMA_TEMPERATURE=${LLAMA_TEMPERATURE:-0.1}
-      - LLAMA_BASE_URL=${LLAMA_BASE_URL:-https://api.llama.com/compat/v1/}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-2.5-flash}
+      - GEMINI_TEMPERATURE=${GEMINI_TEMPERATURE:-0.1}
+      - PAGEINDEX_API_KEY=${PAGEINDEX_API_KEY}
       - ENABLE_STREAMING=${ENABLE_STREAMING:-true}
       - STREAM_CHUNK_SIZE=${STREAM_CHUNK_SIZE:-100}
       - REQUEST_TIMEOUT=${REQUEST_TIMEOUT:-300}
@@ -23,12 +24,6 @@ services:
       - MAX_TOKENS_PER_REQUEST=${MAX_TOKENS_PER_REQUEST:-4000}
       - CHROMA_PERSIST_DIRECTORY=${CHROMA_PERSIST_DIRECTORY:-./chroma_db}
       - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
-      - AGENTOPS_API_KEY=${AGENTOPS_API_KEY}
-      - AGENTOPS_ENABLED=${AGENTOPS_ENABLED:-true}
-      - AGENTOPS_TRACE_NAME=${AGENTOPS_TRACE_NAME:-PaperWise Analysis}
-      - AGENTOPS_TAGS=${AGENTOPS_TAGS:-["paperwise","research","analysis"]}
-      - GEMINI_API_KEY=${GEMINI_API_KEY}
-      - PAGEINDEX_API_KEY=${PAGEINDEX_API_KEY}
     volumes:
       - ./backend/uploads:/app/uploads
       - ./backend/chroma_db:/app/chroma_db
@@ -49,18 +44,13 @@ services:
       - backend
       - redis
     environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-2.5-flash}
+      - GEMINI_TEMPERATURE=${GEMINI_TEMPERATURE:-0.1}
+      - PAGEINDEX_API_KEY=${PAGEINDEX_API_KEY}
       - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
-      - LLAMA_MODEL=${LLAMA_MODEL:-Llama-4-Maverick-17B-128E-Instruct-FP8}
-      - LLAMA_TEMPERATURE=${LLAMA_TEMPERATURE:-0.1}
-      - LLAMA_BASE_URL=${LLAMA_BASE_URL:-https://api.llama.com/compat/v1/}
       - UPLOAD_DIR=${UPLOAD_DIR:-uploads}
       - CHROMA_PERSIST_DIRECTORY=${CHROMA_PERSIST_DIRECTORY:-./chroma_db}
-      - AGENTOPS_API_KEY=${AGENTOPS_API_KEY}
-      - AGENTOPS_ENABLED=${AGENTOPS_ENABLED:-true}
-      - AGENTOPS_TRACE_NAME=${AGENTOPS_TRACE_NAME:-PaperWise Worker}
-      - AGENTOPS_TAGS=${AGENTOPS_TAGS:-["paperwise","research","analysis","worker"]}
-      - GEMINI_API_KEY=${GEMINI_API_KEY}
-      - PAGEINDEX_API_KEY=${PAGEINDEX_API_KEY}
     volumes:
       - ./backend/uploads:/app/uploads
       - ./backend/chroma_db:/app/chroma_db

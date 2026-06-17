@@ -207,7 +207,7 @@ async def analyze_paper_async(request: AsyncAnalyzeRequest):
                 "query": request.query,
                 "started_at": datetime.now(timezone.utc).isoformat(),
                 "status": "queued",
-                "model": settings.llama_model
+                "model": settings.gemini_model
             }
         }
 

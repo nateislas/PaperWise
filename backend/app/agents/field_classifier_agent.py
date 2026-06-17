@@ -55,7 +55,7 @@ class FieldClassifierAgent(BaseAgent):
 
         try:
             content = ""
-            async for chunk in self._call_llama_stream(messages):
+            async for chunk in self._call_llm_stream(messages):
                 content += chunk
 
             # Best-effort JSON parsing; fallback to generic

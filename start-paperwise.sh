@@ -11,7 +11,7 @@ if ! command -v uv &> /dev/null; then
 fi
 
 # Check if .env file exists and has the API key (allow fallback to environment variables)
-if [ ! -f "backend/.env" ] && [ -z "$GEMINI_API_KEY" ] && [ -z "$LLAMA_API_KEY" ]; then
+if [ ! -f "backend/.env" ] && [ -z "$GEMINI_API_KEY" ] && [ -z "$GEMINI_API_KEY" ]; then
     echo "❌ backend/.env file not found and no environment key present. Please create it with your API key."
     exit 1
 fi
@@ -24,8 +24,8 @@ fi
 # Override REDIS_URL for local host execution (bypass docker containers setup)
 export REDIS_URL=redis://localhost:6379/0
 
-if [ -z "$GEMINI_API_KEY" ] && [ -z "$LLAMA_API_KEY" ]; then
-    echo "⚠️  Please configure GEMINI_API_KEY or LLAMA_API_KEY in backend/.env or your shell environment"
+if [ -z "$GEMINI_API_KEY" ] && [ -z "$GEMINI_API_KEY" ]; then
+    echo "⚠️  Please configure GEMINI_API_KEY or GEMINI_API_KEY in backend/.env or your shell environment"
     exit 1
 fi
 

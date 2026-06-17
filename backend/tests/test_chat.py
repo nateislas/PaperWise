@@ -29,9 +29,9 @@ def test_rank_chunks():
 def test_local_chat_fallback(mock_analysis_manager, mock_pdf_parser, mock_openai, mock_settings):
     # Setup settings to disable PageIndex
     mock_settings.pageindex_api_key = None
-    mock_settings.llama_api_key = "fake-key"
-    mock_settings.llama_base_url = "http://fake-url"
-    mock_settings.llama_model = "fake-model"
+    mock_settings.gemini_api_key = "fake-key"
+    mock_settings.gemini_base_url = "http://fake-url"
+    mock_settings.gemini_model = "fake-model"
     mock_settings.request_timeout = 10
     
     # Setup mocks

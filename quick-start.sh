@@ -15,11 +15,11 @@ if ! command -v node &> /dev/null; then
     exit 1
 fi
 
-# Check if Llama API key is set
-if [ -z "$LLAMA_API_KEY" ]; then
-    echo "⚠️  LLAMA_API_KEY environment variable is not set."
-    echo "Please set your Llama API key:"
-    echo "export LLAMA_API_KEY='your-llama-api-key-here'"
+# Check if Gemini API key is set
+if [ -z "$GEMINI_API_KEY" ]; then
+    echo "⚠️  GEMINI_API_KEY environment variable is not set."
+    echo "Please set your Gemini API key:"
+    echo "export GEMINI_API_KEY='your-gemini-api-key-here'"
     echo ""
     read -p "Do you want to continue without setting the API key? (y/n): " -n 1 -r
     echo
@@ -48,7 +48,7 @@ pip install -r requirements.txt
 if [ ! -f ".env" ]; then
     echo "Creating .env file..."
     cp env.example .env
-    echo "⚠️  Please edit backend/.env and add your Llama API key"
+    echo "⚠️  Please edit backend/.env and add your GEMINI_API_KEY"
 fi
 
 # Create necessary directories
@@ -71,7 +71,7 @@ echo "🎉 Setup complete!"
 echo ""
 echo "To start the application:"
 echo ""
-echo "1. Set your Llama API key in backend/.env"
+echo "1. Set your GEMINI_API_KEY in backend/.env"
 echo "2. Start the backend:"
 echo "   cd backend"
 echo "   source venv/bin/activate"

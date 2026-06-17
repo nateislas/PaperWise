@@ -198,7 +198,7 @@ Rules:
 JSON:"""
             
             # Call LLM to extract metadata
-            response = self._call_llama([{"role": "user", "content": prompt}])
+            response = self._call_llm([{"role": "user", "content": prompt}])
             
             if not response:
                 return {"title": "Unknown", "author": "Unknown"}

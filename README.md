@@ -48,7 +48,7 @@ PaperWise helps researchers understand:
 ### Backend
 - **FastAPI** for high-performance REST API
 - **Multi-agent system** using LangChain
-- **Meta Llama models** for intelligent analysis
+- **Google Gemini** for intelligent analysis
 - **Advanced PDF processing** with PyMuPDF
 
 ### AI Agents
@@ -63,7 +63,7 @@ PaperWise helps researchers understand:
 ### Prerequisites
 - Python 3.8+
 - Node.js 16+
-- [Llama API key](https://api.llama.com/)
+- [Gemini API key](https://aistudio.google.com/app/apikey)
 
 ### 1. Clone and Setup
 ```bash
@@ -73,7 +73,7 @@ cd PaperWise
 
 ### 2. Set Environment Variable
 ```bash
-export LLAMA_API_KEY='your-llama-api-key-here'
+export GEMINI_API_KEY='your-gemini-api-key-here'
 ```
 
 ### 3. Run the Application
@@ -104,7 +104,7 @@ Navigate to [http://localhost:3000](http://localhost:3000)
 |-----------|------------|---------|
 | **Frontend** | React, TypeScript, Tailwind CSS | 18.2.0 |
 | **Backend** | FastAPI, Python | 0.104+ |
-| **AI/ML** | Meta Llama, LangChain | Latest |
+| **AI/ML** | Google Gemini, LangChain | Latest |
 | **Document Processing** | PyMuPDF, LangChain | Latest |
 | **Package Management** | uv (Python), npm | Latest |
 | **Deployment** | Docker | Ready |
@@ -126,10 +126,10 @@ Navigate to [http://localhost:3000](http://localhost:3000)
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `LLAMA_API_KEY` | Your Llama API key | **Required** |
-| `LLAMA_BASE_URL` | Llama API base URL | `https://api.llama.com/compat/v1/` |
-| `LLAMA_MODEL` | Llama model to use | `Llama-4-Maverick-17B-128E-Instruct-FP8` |
-| `LLAMA_TEMPERATURE` | Model temperature | `0.1` |
+| `GEMINI_API_KEY | Your Gemini API key | **Required** |
+| `GEMINI_BASE_URL | Gemini base URL | `https://generativelanguage.googleapis.com/v1beta/openai/` |
+| `GEMINI_MODEL | Gemini model to use | `gemini-2.5-flash` |
+| `GEMINI_TEMPERATURE | Model temperature | `0.1` |
 | `UPLOAD_DIR` | File upload directory | `uploads` |
 | `MAX_FILE_SIZE` | Maximum file size | `50MB` |
 | `CHUNK_SIZE` | Text chunk size | `1000` |
@@ -154,7 +154,7 @@ We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.
 ### Common Issues
 
 - **PDF Parsing Errors**: Ensure PDF is not password-protected or corrupted
-- **API Key Issues**: Verify Llama API key is valid and has sufficient credits
+- **API Key Issues**: Verify Gemini API key is valid and has sufficient credits
 - **Memory Issues**: Reduce chunk size for large documents
 - **Timeout Errors**: Increase timeout settings for complex analyses
 
@@ -170,7 +170,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🙏 Acknowledgments
 
-- Built with [Meta Llama](https://llama.meta.com/) models
+- Built with [Google Gemini](https://ai.google.dev/) models
 - Powered by [LangChain](https://langchain.com/) for AI orchestration
 - UI components from [Lucide React](https://lucide.dev/)
 

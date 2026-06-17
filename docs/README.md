@@ -9,7 +9,7 @@ PaperWise is an AI-powered research paper analysis system that provides comprehe
 ### Backend (Python/FastAPI)
 - **Multi-Agent System**: Specialized AI agents for different aspects of analysis
 - **PDF Processing**: Advanced PDF parsing with text, table, and figure extraction
-- **Llama Integration**: Leveraging Meta's Llama models for intelligent analysis
+- **Gemini Integration**: Leveraging Google Gemini models for intelligent analysis
 - **RESTful API**: FastAPI-based endpoints for frontend communication
 
 ### Frontend (React/TypeScript)
@@ -23,7 +23,7 @@ PaperWise is an AI-powered research paper analysis system that provides comprehe
 ### Prerequisites
 - Python 3.8+
 - Node.js 16+
-- Llama API key
+- Gemini API key
 
 ### Backend Setup
 
@@ -46,7 +46,7 @@ PaperWise is an AI-powered research paper analysis system that provides comprehe
 4. **Set up environment variables**:
    ```bash
    cp env.example .env
-   # Edit .env and add your Llama API key
+   # Edit .env and add your Gemini API key
    ```
 
 5. **Run the backend server**:
@@ -131,10 +131,10 @@ The frontend will be available at `http://localhost:3000`
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `LLAMA_API_KEY` | Your Llama API key | Required |
-| `LLAMA_BASE_URL` | Llama API base URL | `https://api.llama.com/compat/v1/` |
-| `LLAMA_MODEL` | Llama model to use | `Llama-4-Maverick-17B-128E-Instruct-FP8` |
-| `LLAMA_TEMPERATURE` | Model temperature | `0.1` |
+| `GEMINI_API_KEY | Your Gemini API key | **Required** |
+| `GEMINI_BASE_URL | Gemini base URL | `https://generativelanguage.googleapis.com/v1beta/openai/` |
+| `GEMINI_MODEL | Gemini model to use | `gemini-2.5-flash` |
+| `GEMINI_TEMPERATURE | Model temperature | `0.1` |
 | `UPLOAD_DIR` | File upload directory | `uploads` |
 | `MAX_FILE_SIZE` | Maximum file size (bytes) | `52428800` (50MB) |
 | `CHUNK_SIZE` | Text chunk size for processing | `1000` |
@@ -162,7 +162,7 @@ The frontend will be available at `http://localhost:3000`
 ### Common Issues
 
 1. **PDF Parsing Errors**: Ensure PDF is not password-protected or corrupted
-2. **API Key Issues**: Verify Llama API key is valid and has sufficient credits
+2. **API Key Issues**: Verify Gemini API key is valid and has sufficient credits
 3. **Memory Issues**: Reduce chunk size for large documents
 4. **Timeout Errors**: Increase timeout settings for complex analyses
 

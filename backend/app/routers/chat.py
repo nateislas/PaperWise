@@ -148,15 +148,15 @@ async def chat_with_paper(
             
         messages.append({"role": "user", "content": request.message})
         
-        # Call Llama client
+        # Call LLM client
         client = OpenAI(
-            api_key=settings.llama_api_key,
-            base_url=settings.llama_base_url,
+            api_key=settings.gemini_api_key,
+            base_url=settings.gemini_base_url,
             timeout=settings.request_timeout
         )
         
         completion = client.chat.completions.create(
-            model=settings.llama_model,
+            model=settings.gemini_model,
             messages=messages,
             temperature=0.2,
             max_tokens=1000

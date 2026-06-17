@@ -289,7 +289,7 @@ Present the analysis in a clear, organized manner that would be valuable to PhD 
             )
             
             comprehensive_analysis = ""
-            async for chunk in self._call_llama_stream([{"role": "user", "content": synthesis_prompt}]):
+            async for chunk in self._call_llm_stream([{"role": "user", "content": synthesis_prompt}]):
                 comprehensive_analysis += chunk
                 yield {
                     "type": "synthesis_chunk",
@@ -576,7 +576,7 @@ Return ONLY the JSON object. Be specific and evidence-based. If a section cannot
             "metadata": {
                 "analysis_timestamp": self._get_timestamp(),
                 "analysis_confidence": 0.85,
-                "model_used": settings.llama_model
+                "model_used": settings.gemini_model
             }
         }
     
@@ -666,7 +666,7 @@ Return ONLY the JSON object. Be specific and evidence-based. If a section cannot
         )
         
         content = ""
-        async for chunk in self._call_llama_stream([{"role": "user", "content": synthesis_prompt}]):
+        async for chunk in self._call_llm_stream([{"role": "user", "content": synthesis_prompt}]):
             content += chunk
         return content
     
