@@ -47,28 +47,52 @@ const PaperAnalysis: React.FC = () => {
   };
 
   return (
-    <div className="max-w-6xl mx-auto">
-      {/* Hero Section */}
-      <div className="text-center py-12">
-        <h1 className="text-4xl font-bold text-gray-900 mb-4">
-          AI-Powered Research Paper Analysis
-        </h1>
-        <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-        Upload your research paper to PaperWise and get instant, in-depth analysis. Our AI agent goes beyond a simple summary, providing you with a critical breakdown of the methodology, key findings, and contributions to the field—just like a fellow researcher would.
-        </p>
-      </div>
+    <main className="min-h-screen bg-slate-50/50">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+        {/* Hero Section */}
+        <div className="text-center mb-16 animate-fade-in">
+          <div className="inline-flex items-center px-4 py-1.5 rounded-full bg-primary-50 text-primary-700 text-xs font-bold uppercase tracking-widest mb-6 border border-primary-100">
+            Analysis Engine
+          </div>
+          <h1 className="text-5xl font-extrabold text-slate-900 mb-6 tracking-tight">
+            New Research Analysis
+          </h1>
+          <p className="text-lg font-medium text-slate-500 max-w-2xl mx-auto leading-relaxed">
+            Upload your PDF and let our multi-agent system perform a deep 
+            methodological and results audit of your research paper.
+          </p>
+        </div>
 
-      {/* File Upload Section */}
-      <div className="mb-8">
-        <FileUpload
-          onFileUpload={handleFileUpload}
-          onFileRemove={handleFileRemove}
-          uploadedFile={uploadedFile}
-          isUploading={isUploading}
-          error={error}
-        />
+        {/* File Upload Section */}
+        <div className="bg-white rounded-3xl shadow-soft border border-slate-100 p-10 animate-slide-up">
+          <FileUpload
+            onFileUpload={handleFileUpload}
+            onFileRemove={handleFileRemove}
+            uploadedFile={uploadedFile}
+            isUploading={isUploading}
+            error={error}
+          />
+        </div>
+
+        {/* Info Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-16">
+          <div className="p-6 bg-white rounded-2xl shadow-sm border border-slate-100">
+            <h3 className="text-sm font-bold text-slate-900 mb-2">Deep Methodology Audit</h3>
+            <p className="text-xs font-medium text-slate-500 leading-relaxed">
+              We analyze experimental design, statistical significance, and baseline comparisons 
+              to ensure results are robust and reproducible.
+            </p>
+          </div>
+          <div className="p-6 bg-white rounded-2xl shadow-sm border border-slate-100">
+            <h3 className="text-sm font-bold text-slate-900 mb-2">Contextual Gap Analysis</h3>
+            <p className="text-xs font-medium text-slate-500 leading-relaxed">
+              Our agents map the paper against existing literature to identify specific 
+              research gaps and novelty contributions.
+            </p>
+          </div>
+        </div>
       </div>
-    </div>
+    </main>
   );
 };
 

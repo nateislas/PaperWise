@@ -260,26 +260,35 @@ const AnalysisPage: React.FC<AnalysisPageProps> = () => {
 
 
 
-  // If analysis is completed, show results
-  if (analysis) {
-    console.log('✅ Showing completed analysis results');
-    const apiBaseUrl = process.env.REACT_APP_API_URL || 'http://localhost:8081';
-    const pdfUrl = `${apiBaseUrl}/api/v1/analyses/${analysisId}/paper`;
+  const apiBaseUrl = process.env.REACT_APP_API_URL || 'http://localhost:8081';
+  const pdfUrl = `${apiBaseUrl}/api/v1/analyses/${analysisId}/paper`;
 
-    const isPlaceholder = 
-      analysis.analysis?.executive_summary?.includes("run the full multi-agent AI") ||
-      analysis.comprehensive_analysis?.executive_summary?.includes("run the full multi-agent AI");
+  const isPlaceholder = 
+    analysis?.analysis?.executive_summary?.includes("run the full multi-agent AI") ||
+    analysis?.comprehensive_analysis?.executive_summary?.includes("run the full multi-agent AI");
 
+  if (!analysis) {
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col">
-        {/* Sub-header controls */}
-        <div className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between shadow-sm">
-          <div className="flex items-center space-x-3">
-            <h2 className="text-lg font-semibold text-gray-800 truncate max-w-xl">
-              {analysis.paper_info?.title || 'Research Paper Analysis'}
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
+          <p className="mt-4 text-slate-600 font-bold tracking-tight">Synchronizing library...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-slate-50/30 flex flex-col">
+      {/* Sub-header controls */}
+      <header className="sticky top-20 z-40 bg-white/80 backdrop-blur-md border-b border-slate-200/50 px-8 py-4 shadow-sm">
+        <div className="max-w-[1600px] mx-auto flex items-center justify-between gap-6">
+          <div className="flex-1 min-w-0">
+            <h2 className="text-xl font-bold text-slate-900 truncate">
+              {analysis?.paper_info?.title || 'Research Paper Analysis'}
             </h2>
           </div>
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-4 shrink-0">
             {isPlaceholder && (
               <button
                 onClick={() => {
@@ -287,182 +296,182 @@ const AnalysisPage: React.FC<AnalysisPageProps> = () => {
                   setFileId(analysisId || null);
                   setAnalysis(null);
                 }}
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors mr-2 animate-pulse"
+                className="inline-flex items-center px-6 py-2.5 border border-transparent text-sm font-bold rounded-xl text-white bg-primary-600 hover:bg-primary-700 shadow-soft hover:shadow-soft-lg transition-all focus-ring animate-pulse-slow"
               >
                 <svg className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
-                Run AI Analysis
+                Run Multi-Agent Analysis
               </button>
             )}
             <button
               onClick={() => setShowPdf(!showPdf)}
-              className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+              className="inline-flex items-center px-5 py-2.5 border border-slate-200 text-sm font-bold rounded-xl text-slate-700 bg-white hover:bg-slate-50 hover:border-slate-300 shadow-sm transition-all focus-ring"
+              aria-expanded={showPdf}
             >
-              <svg className="h-4 w-4 mr-2 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="h-4 w-4 mr-2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
               </svg>
-              {showPdf ? 'Hide PDF' : 'Show PDF'}
+              {showPdf ? 'Hide Document' : 'View Document'}
             </button>
           </div>
         </div>
+      </header>
 
-        {/* Layout container */}
-        <div className="flex-1 flex overflow-hidden h-[calc(100vh-125px)]">
-          {/* Left Side: PDF Viewer */}
-          {showPdf && (
-            <div className="w-1/2 h-full border-r border-gray-200 bg-gray-100 flex flex-col">
+      {/* Layout container */}
+      <main className="flex-1 flex overflow-hidden h-[calc(100vh-144px)]">
+        {/* Left Side: PDF Viewer */}
+        {showPdf && (
+          <div className="w-1/2 h-full border-r border-slate-200 bg-slate-100/50 p-4">
+            <div className="w-full h-full bg-white rounded-2xl shadow-soft overflow-hidden border border-slate-200">
               <iframe
                 src={pdfUrl}
                 className="w-full h-full"
-                title="Paper PDF Viewer"
+                title="Academic Paper Viewer"
               />
             </div>
-          )}
+          </div>
+        )}
 
-          {/* Right Side: Tabbed Workspace */}
-          <div className={`${showPdf ? 'w-1/2' : 'w-full'} h-full flex flex-col`}>
-            {/* Tabs */}
-            <div className="bg-white border-b border-gray-200 flex">
+        {/* Right Side: Tabbed Workspace */}
+        <div className={`${showPdf ? 'w-1/2' : 'w-full'} h-full flex flex-col bg-white`}>
+          {/* Tabs */}
+          <nav className="bg-slate-50 border-b border-slate-200 flex px-6" aria-label="Analysis Workspace">
+            {[
+              { id: 'analysis', label: 'AI Insights' },
+              { id: 'annotations', label: `Annotations (${annotations.length})` },
+              { id: 'chat', label: 'Knowledge Chat' }
+            ].map((tab) => (
               <button
-                onClick={() => setActiveTab('analysis')}
-                className={`flex-1 py-3 px-4 text-center font-medium text-sm border-b-2 transition-colors ${
-                  activeTab === 'analysis'
-                    ? 'border-blue-600 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as any)}
+                className={`py-4 px-6 text-sm font-bold border-b-2 transition-all focus-ring ${
+                  activeTab === tab.id
+                    ? 'border-primary-600 text-primary-600'
+                    : 'border-transparent text-slate-400 hover:text-slate-600'
                 }`}
+                aria-current={activeTab === tab.id ? 'page' : undefined}
               >
-                AI Analysis
+                {tab.label}
               </button>
-              <button
-                onClick={() => setActiveTab('annotations')}
-                className={`flex-1 py-3 px-4 text-center font-medium text-sm border-b-2 transition-colors ${
-                  activeTab === 'annotations'
-                    ? 'border-blue-600 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                Annotations & Notes ({annotations.length})
-              </button>
-              <button
-                onClick={() => setActiveTab('chat')}
-                className={`flex-1 py-3 px-4 text-center font-medium text-sm border-b-2 transition-colors ${
-                  activeTab === 'chat'
-                    ? 'border-blue-600 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                Chat Box
-              </button>
-            </div>
+            ))}
+          </nav>
 
-            {/* Tab content */}
-            <div className="flex-1 overflow-y-auto p-6">
-              {activeTab === 'analysis' && (
+          {/* Tab content */}
+          <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+            {activeTab === 'analysis' && (
+              <div className="animate-fade-in">
                 <AnalysisResults analysis={analysis} isLoading={false} />
-              )}
+              </div>
+            )}
 
-              {activeTab === 'annotations' && (
-                <div className="space-y-6">
-                  <h3 className="text-xl font-bold text-gray-900">Paper Annotations</h3>
-                  
-                  {/* Add Annotation Form */}
-                  <form onSubmit={handleAddAnnotation} className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm space-y-3">
-                    <h4 className="text-sm font-semibold text-gray-700">Add Annotation / Note</h4>
-                    <div className="grid grid-cols-6 gap-3">
-                      <div className="col-span-2">
-                        <label className="block text-xs text-gray-500 mb-1">Page</label>
-                        <input
-                          type="number"
-                          min="1"
-                          value={newAnnotation.page}
-                          onChange={e => setNewAnnotation({ ...newAnnotation, page: parseInt(e.target.value) || 1 })}
-                          className="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white text-gray-800"
-                        />
-                      </div>
-                      <div className="col-span-4">
-                        <label className="block text-xs text-gray-500 mb-1">Reference/Highlighted Text (Optional)</label>
-                        <input
-                          type="text"
-                          placeholder="e.g. Section 2.1 description of models"
-                          value={newAnnotation.text}
-                          onChange={e => setNewAnnotation({ ...newAnnotation, text: e.target.value })}
-                          className="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white text-gray-800"
-                          required
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-500 mb-1">My Note / Explanation</label>
-                      <textarea
-                        rows={3}
-                        placeholder="Write your note or thoughts here..."
-                        value={newAnnotation.note}
-                        onChange={e => setNewAnnotation({ ...newAnnotation, note: e.target.value })}
-                        className="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white text-gray-800"
+            {activeTab === 'annotations' && (
+              <div className="space-y-10 animate-fade-in max-w-3xl mx-auto">
+                <header>
+                  <h3 className="text-2xl font-extrabold text-slate-900 tracking-tight">Paper Annotations</h3>
+                  <p className="text-sm font-medium text-slate-500 mt-1">Keep track of your thoughts and citations</p>
+                </header>
+                
+                {/* Add Annotation Form */}
+                <form onSubmit={handleAddAnnotation} className="bg-slate-50 rounded-3xl p-8 border border-slate-100 shadow-sm space-y-6">
+                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Create New Note</h4>
+                  <div className="grid grid-cols-6 gap-6">
+                    <div className="col-span-2">
+                      <label htmlFor="page-input" className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Page</label>
+                      <input
+                        id="page-input"
+                        type="number"
+                        min="1"
+                        value={newAnnotation.page}
+                        onChange={e => setNewAnnotation({ ...newAnnotation, page: parseInt(e.target.value) || 1 })}
+                        className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus-ring bg-white text-slate-800"
                       />
                     </div>
-                    <button
-                      type="submit"
-                      className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm font-semibold transition-colors shadow-sm"
-                    >
-                      Save Annotation
-                    </button>
-                  </form>
-
-                  {/* List of Annotations */}
-                  <div className="space-y-3">
-                    {annotations.length === 0 ? (
-                      <p className="text-sm text-gray-500 text-center py-6">
-                        No annotations yet. Reference text and take notes on specific sections.
-                      </p>
-                    ) : (
-                      annotations.map(ann => (
-                        <div key={ann.id} className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm relative group">
-                          <button
-                            onClick={() => handleDeleteAnnotation(ann.id)}
-                            className="absolute top-2 right-2 text-red-400 hover:text-red-600 transition-colors hidden group-hover:block"
-                            title="Delete note"
-                          >
-                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                          </button>
-                          <div className="flex items-center space-x-2 text-xs font-semibold text-blue-600 mb-1">
-                            <span>Page {ann.page}</span>
-                            <span>•</span>
-                            <span className="text-gray-400">{new Date(ann.created_at).toLocaleDateString()}</span>
-                          </div>
-                          <blockquote className="border-l-2 border-blue-200 pl-3 italic text-sm text-gray-600 mb-2 bg-gray-50 py-1 rounded-r">
-                            "{ann.text}"
-                          </blockquote>
-                          {ann.note && (
-                            <p className="text-sm text-gray-800 leading-relaxed">{ann.note}</p>
-                          )}
-                        </div>
-                      ))
-                    )}
+                    <div className="col-span-4">
+                      <label htmlFor="ref-text" className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Reference Text</label>
+                      <input
+                        id="ref-text"
+                        type="text"
+                        placeholder="Snippet from paper..."
+                        value={newAnnotation.text}
+                        onChange={e => setNewAnnotation({ ...newAnnotation, text: e.target.value })}
+                        className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus-ring bg-white text-slate-800"
+                        required
+                      />
+                    </div>
                   </div>
-                </div>
-              )}
+                  <div>
+                    <label htmlFor="note-text" className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Personal Insight</label>
+                    <textarea
+                      id="note-text"
+                      rows={4}
+                      placeholder="Why is this important? Any related papers?"
+                      value={newAnnotation.note}
+                      onChange={e => setNewAnnotation({ ...newAnnotation, note: e.target.value })}
+                      className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus-ring bg-white text-slate-800"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-sm font-bold transition-all shadow-soft focus-ring"
+                  >
+                    Save Annotation
+                  </button>
+                </form>
 
-              {activeTab === 'chat' && (
-                <div className="flex flex-col h-[calc(100vh-230px)] bg-gray-50 border border-gray-200 rounded-lg overflow-hidden shadow-sm">
+                {/* List of Annotations */}
+                <div className="space-y-4">
+                  {annotations.length === 0 ? (
+                    <div className="text-center py-20 bg-slate-50 rounded-3xl border border-dashed border-slate-200">
+                      <p className="text-sm font-medium text-slate-400">No notes yet. Be the first to annotate this paper!</p>
+                    </div>
+                  ) : (
+                    annotations.map(ann => (
+                      <div key={ann.id} className="bg-white border border-slate-100 rounded-2xl p-6 shadow-soft relative group hover:border-primary-200 transition-colors">
+                        <button
+                          onClick={() => handleDeleteAnnotation(ann.id)}
+                          className="absolute top-4 right-4 text-slate-300 hover:text-rose-600 transition-colors hidden group-hover:block"
+                          aria-label="Delete annotation"
+                        >
+                          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                        <div className="flex items-center space-x-3 mb-4">
+                          <span className="text-[10px] font-bold px-2 py-1 rounded-md bg-primary-50 text-primary-700 uppercase">Page {ann.page}</span>
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{new Date(ann.created_at).toLocaleDateString()}</span>
+                        </div>
+                        <blockquote className="border-l-4 border-slate-200 pl-4 italic text-sm text-slate-600 mb-4 py-1">
+                          "{ann.text}"
+                        </blockquote>
+                        {ann.note && (
+                          <p className="text-sm font-medium text-slate-800 leading-relaxed">{ann.note}</p>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'chat' && (
+              <div className="flex flex-col h-full animate-fade-in max-w-3xl mx-auto">
+                <div className="flex-1 bg-slate-50 rounded-3xl border border-slate-100 overflow-hidden shadow-inner flex flex-col">
                   {/* Chat messages area */}
-                  <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                  <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
                     {chatMessages.map((msg, idx) => (
                       <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                        <div className={`max-w-[85%] rounded-lg p-3 text-sm shadow-sm ${
+                        <div className={`max-w-[85%] rounded-2xl p-4 text-sm shadow-soft ${
                           msg.role === 'user'
-                            ? 'bg-blue-600 text-white rounded-br-none'
-                            : 'bg-white text-gray-800 rounded-bl-none border border-gray-200'
+                            ? 'bg-primary-600 text-white rounded-br-none'
+                            : 'bg-white text-slate-800 rounded-bl-none border border-slate-100'
                         }`}>
-                          <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+                          <p className="whitespace-pre-wrap leading-relaxed font-medium">{msg.content}</p>
                           {msg.sources && msg.sources.length > 0 && (
-                            <div className="mt-2 pt-1 border-t border-gray-100 flex flex-wrap items-center gap-1.5 text-xs text-gray-500">
-                              <span className="font-semibold text-gray-700">Sources:</span>
+                            <div className="mt-4 pt-3 border-t border-slate-100/20 flex flex-wrap items-center gap-2">
+                              <span className="text-[10px] font-bold uppercase tracking-widest opacity-60">Sources:</span>
                               {msg.sources.map((src, sidx) => (
-                                <span key={sidx} className="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200 font-medium text-gray-600">
+                                <span key={sidx} className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md text-[10px] font-bold border border-slate-200">
                                   {src}
                                 </span>
                               ))}
@@ -473,22 +482,22 @@ const AnalysisPage: React.FC<AnalysisPageProps> = () => {
                     ))}
                     {isChatLoading && (
                       <div className="flex justify-start">
-                        <div className="bg-white border border-gray-200 rounded-lg rounded-bl-none p-3 shadow-sm flex items-center space-x-2 text-sm text-gray-500">
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                          <span>Assistant is reading & thinking...</span>
+                        <div className="bg-white border border-slate-100 rounded-2xl rounded-bl-none p-4 shadow-soft flex items-center space-x-3 text-sm text-slate-500 font-bold">
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-600"></div>
+                          <span>Assistant is reflecting...</span>
                         </div>
                       </div>
                     )}
                   </div>
 
                   {/* Suggestion Prompts */}
-                  <div className="px-4 py-2 bg-white border-t border-gray-100 flex flex-wrap gap-2">
-                    {['Summarize findings', 'Identify limitations', 'Explain methodology'].map((prompt, pidx) => (
+                  <div className="px-6 py-4 bg-white/50 backdrop-blur-sm border-t border-slate-100 flex flex-wrap gap-2">
+                    {['Summarize methodology', 'Key findings', 'Practical applications'].map((prompt, pidx) => (
                       <button
                         key={pidx}
                         type="button"
                         onClick={() => handleSendChatMessage(prompt)}
-                        className="text-xs bg-gray-50 hover:bg-gray-100 text-gray-600 border border-gray-200 px-2.5 py-1 rounded transition-colors shadow-2xs font-medium"
+                        className="text-[10px] font-bold uppercase tracking-widest bg-white hover:bg-primary-50 text-slate-500 hover:text-primary-600 border border-slate-200 hover:border-primary-200 px-3 py-1.5 rounded-lg transition-all shadow-sm focus-ring"
                       >
                         {prompt}
                       </button>
@@ -501,42 +510,34 @@ const AnalysisPage: React.FC<AnalysisPageProps> = () => {
                       e.preventDefault();
                       handleSendChatMessage();
                     }}
-                    className="p-3 bg-white border-t border-gray-200 flex items-center space-x-2"
+                    className="p-4 bg-white border-t border-slate-100 flex items-center space-x-3"
                   >
                     <input
                       type="text"
-                      placeholder="Ask a question about this paper..."
+                      placeholder="Ask the AI about this paper..."
                       value={chatInput}
                       onChange={(e) => setChatInput(e.target.value)}
                       disabled={isChatLoading}
-                      className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white text-gray-800 disabled:opacity-50"
+                      className="flex-1 border border-slate-200 rounded-xl px-5 py-3 text-sm focus-ring bg-slate-50 text-slate-800 placeholder-slate-400 disabled:opacity-50 font-medium"
+                      aria-label="Chat input"
                     />
                     <button
                       type="submit"
                       disabled={isChatLoading || !chatInput.trim()}
-                      className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg p-2 font-semibold transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="bg-primary-600 hover:bg-primary-700 text-white rounded-xl p-3 transition-all shadow-soft disabled:opacity-50 disabled:cursor-not-allowed focus-ring"
+                      aria-label="Send message"
                     >
-                      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                      <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M14 5l7 7m0 0l-7 7m7-7H3" />
                       </svg>
                     </button>
                   </form>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         </div>
-      </div>
-    );
-  }
-
-  // Loading state
-  return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-        <p className="mt-4 text-gray-600">Loading analysis...</p>
-      </div>
+      </main>
     </div>
   );
 };

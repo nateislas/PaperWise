@@ -124,77 +124,84 @@ const UploadArea: React.FC<UploadAreaProps> = ({ onUploadSuccess }) => {
   return (
     <div className="w-full">
       <div
-        className={`relative border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+        className={`relative border-2 border-dashed rounded-2xl p-10 text-center transition-all duration-300 ${
           isDragOver
-            ? 'border-blue-400 bg-blue-50'
-            : 'border-gray-300 hover:border-gray-400'
-        } ${isUploading ? 'pointer-events-none opacity-75' : ''}`}
+            ? 'border-primary-400 bg-primary-50/50 scale-[1.02] shadow-soft-lg'
+            : 'border-slate-200 hover:border-primary-300 hover:bg-slate-50/50'
+        } ${isUploading ? 'pointer-events-none opacity-75' : 'cursor-pointer'}`}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
+        onClick={handleClick}
+        role="button"
+        tabIndex={isUploading ? -1 : 0}
+        aria-label="Upload research paper PDF"
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            handleClick();
+          }
+        }}
       >
         <input
           ref={fileInputRef}
           type="file"
           accept=".pdf"
           onChange={handleFileSelect}
-          className="hidden"
+          className="sr-only"
         />
 
         {isUploading ? (
-          <div className="space-y-4">
-            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <div className="space-y-6">
+            <div className="w-20 h-20 bg-primary-100 rounded-3xl flex items-center justify-center mx-auto shadow-soft animate-pulse">
+              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-600"></div>
             </div>
             <div>
-              <h3 className="text-lg font-medium text-gray-900">Uploading...</h3>
-              <p className="text-sm text-gray-500">Please wait while we process your file</p>
+              <h3 className="text-xl font-bold text-slate-900 mb-2">Analyzing Document...</h3>
+              <p className="text-sm font-medium text-slate-500">Extracting insights and methodology</p>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
+            <div className="w-full max-w-xs mx-auto bg-slate-100 rounded-full h-2.5 overflow-hidden">
               <div
-                className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                className="bg-primary-600 h-full rounded-full transition-all duration-500 ease-out"
                 style={{ width: `${uploadProgress}%` }}
+                role="progressbar"
+                aria-valuenow={uploadProgress}
+                aria-valuemin={0}
+                aria-valuemax={100}
               ></div>
             </div>
-            <p className="text-sm text-gray-500">{uploadProgress}% complete</p>
+            <p className="text-sm font-bold text-primary-600" aria-live="polite">{uploadProgress}% complete</p>
           </div>
         ) : (
-          <div className="space-y-4">
-            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto">
-              <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="space-y-6">
+            <div className="w-20 h-20 bg-slate-100 rounded-3xl flex items-center justify-center mx-auto shadow-sm group-hover:scale-110 transition-transform duration-300">
+              <svg className="w-10 h-10 text-slate-400 group-hover:text-primary-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
               </svg>
             </div>
             <div>
-              <h3 className="text-lg font-medium text-gray-900">Upload Research Paper</h3>
-              <p className="text-sm text-gray-500">
-                Drag and drop your PDF file here, or{' '}
-                <button
-                  type="button"
-                  onClick={handleClick}
-                  className="text-blue-600 hover:text-blue-500 font-medium"
-                >
-                  click to browse
-                </button>
+              <h3 className="text-xl font-bold text-slate-900 mb-2">Drop your paper here</h3>
+              <p className="text-sm font-medium text-slate-500">
+                Support for PDF files up to 50MB. Click to browse.
               </p>
             </div>
-            <div className="text-xs text-gray-400">
-              Only PDF files are supported. Maximum file size: 50MB
+            <div className="inline-flex items-center px-4 py-2 bg-slate-900 text-white text-xs font-bold rounded-xl shadow-soft">
+              SELECT PDF FILE
             </div>
           </div>
         )}
       </div>
 
       {error && (
-        <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-          <div className="flex">
+        <div className="mt-6 p-4 bg-rose-50 border border-rose-100 rounded-2xl shadow-sm" role="alert">
+          <div className="flex items-center">
             <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+              <svg className="h-5 w-5 text-rose-500" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
               </svg>
             </div>
             <div className="ml-3">
-              <p className="text-sm text-red-800">{error}</p>
+              <p className="text-sm font-bold text-rose-800">{error}</p>
             </div>
           </div>
         </div>

@@ -177,43 +177,22 @@ const Dashboard: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Centered Blurb */}
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-gray-900 mb-6">AI-Powered Research Paper Analysis</h1>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
-            Upload your research paper to PaperWise and get instant, in-depth analysis. Our AI agent goes beyond a simple summary, providing you with a critical breakdown of the methodology, key findings, and contributions to the field—just like a fellow researcher would.
+    <main className="min-h-screen bg-slate-50/50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        {/* Hero Section */}
+        <div className="text-center mb-16 animate-fade-in">
+          <h1 className="text-5xl font-extrabold text-slate-900 mb-6 tracking-tight">
+            Research Library
+          </h1>
+          <p className="text-lg font-medium text-slate-500 max-w-2xl mx-auto leading-relaxed">
+            Manage your academic knowledge base with AI-powered insights. 
+            Upload papers to extract methodology, findings, and critical gaps automatically.
           </p>
         </div>
 
-        {/* Refresh Button */}
-        <div className="flex justify-end mb-6">
-          <button
-            onClick={() => {
-              console.log('🔄 Manual refresh triggered');
-              setRefreshing(true);
-              fetchAnalyses();
-              fetchStats();
-            }}
-            disabled={refreshing}
-            className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors ${
-              refreshing 
-                ? 'text-gray-400 cursor-not-allowed' 
-                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-            }`}
-            title="Refresh analyses"
-          >
-            <svg className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            <span className="text-sm">{refreshing ? 'Refreshing...' : 'Refresh'}</span>
-          </button>
-        </div>
-
-        {/* Stats Cards */}
+        {/* Stats Section */}
         {stats && stats.by_status && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <section className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16" aria-label="Quick Stats">
             <StatsCard
               title="Total Analyses"
               value={stats.total_analyses || 0}
@@ -232,133 +211,160 @@ const Dashboard: React.FC = () => {
               icon="⏳"
               color="yellow"
             />
-          </div>
+          </section>
         )}
 
-        {/* Upload & Laptop Folder Scanning Workspace */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
+        {/* Tools Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-16">
           {/* Upload Area */}
-          <div className="bg-white rounded-lg shadow-sm border p-6 flex flex-col justify-between">
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-2">Upload New Paper</h2>
-              <p className="text-sm text-gray-500 mb-4">Drag and drop a PDF file to upload and start parsing</p>
+          <section className="bg-white rounded-3xl shadow-soft border border-slate-100 p-8 flex flex-col justify-between" aria-labelledby="upload-heading">
+            <div className="mb-6">
+              <h2 id="upload-heading" className="text-xl font-bold text-slate-900 mb-2">New Analysis</h2>
+              <p className="text-sm font-medium text-slate-500">Add a new PDF to your research library</p>
             </div>
             <UploadArea onUploadSuccess={handleUploadSuccess} />
-          </div>
+          </section>
 
           {/* Local Directory Scan Area */}
-          <div className="bg-white rounded-lg shadow-sm border p-6 flex flex-col justify-between">
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-2">Local Laptop Library</h2>
-              <p className="text-sm text-gray-500 mb-4 font-normal text-left">
-                Scan any folder on your laptop (e.g. <code>/Users/name/Downloads</code>) to open files instantly.
+          <section className="bg-white rounded-3xl shadow-soft border border-slate-100 p-8 flex flex-col" aria-labelledby="scan-heading">
+            <div className="mb-6">
+              <h2 id="scan-heading" className="text-xl font-bold text-slate-900 mb-2">Laptop Scanner</h2>
+              <p className="text-sm font-medium text-slate-500 mb-6">
+                Scan your local directories to import papers instantly.
               </p>
               
-              <form onSubmit={(e) => { e.preventDefault(); fetchLocalPapers(localPathInput); }} className="flex space-x-2 mb-4">
-                <input
-                  type="text"
-                  placeholder="Leave blank for default 'papers' directory..."
-                  value={localPathInput}
-                  onChange={(e) => setLocalPathInput(e.target.value)}
-                  className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white text-gray-800"
-                />
+              <form onSubmit={(e) => { e.preventDefault(); fetchLocalPapers(localPathInput); }} className="flex space-x-3 mb-4">
+                <div className="flex-1 relative">
+                  <input
+                    type="text"
+                    id="path-input"
+                    placeholder="Enter folder path..."
+                    value={localPathInput}
+                    onChange={(e) => setLocalPathInput(e.target.value)}
+                    className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus-ring bg-slate-50/50 text-slate-800 placeholder-slate-400"
+                    aria-label="Local folder path"
+                  />
+                </div>
                 <button
                   type="submit"
                   disabled={isScanning}
-                  className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-4 py-2 text-sm font-semibold transition-colors disabled:opacity-50"
+                  className="bg-slate-900 hover:bg-slate-800 text-white rounded-xl px-6 py-2.5 text-sm font-bold transition-all disabled:opacity-50 shadow-soft focus-ring"
                 >
-                  {isScanning ? 'Scanning...' : 'Scan Folder'}
+                  {isScanning ? 'Scanning...' : 'Scan'}
                 </button>
               </form>
 
               {scanError && (
-                <div className="text-red-500 text-xs mb-3 bg-red-50 p-2 rounded border border-red-100">{scanError}</div>
+                <div className="text-rose-600 text-xs mb-3 bg-rose-50 p-3 rounded-xl border border-rose-100 font-medium" role="alert">{scanError}</div>
               )}
             </div>
 
             {/* List of scanned local papers */}
-            <div className="flex-1 max-h-56 overflow-y-auto border border-gray-200 rounded-lg bg-gray-50 p-3 space-y-2">
+            <div className="flex-1 max-h-64 overflow-y-auto border border-slate-100 rounded-2xl bg-slate-50/30 p-4 space-y-3 custom-scrollbar">
               {localPapers.length === 0 ? (
-                <p className="text-sm text-gray-500 text-center py-8">
-                  {isScanning ? 'Scanning directory...' : 'No PDFs found. Drop some papers in the default folder or scan a new path.'}
-                </p>
+                <div className="flex flex-col items-center justify-center py-10 opacity-40">
+                  <svg className="w-12 h-12 text-slate-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+                  </svg>
+                  <p className="text-sm font-medium">{isScanning ? 'Scanning library...' : 'No PDF papers found'}</p>
+                </div>
               ) : (
                 localPapers.map((paper, idx) => (
-                  <div key={idx} className="flex items-center justify-between bg-white border border-gray-100 p-2 rounded shadow-2xs hover:border-gray-300 transition-colors">
-                    <div className="truncate pr-4 flex-1 text-left">
-                      <div className="text-sm font-medium text-gray-800 truncate" title={paper.filename}>{paper.filename}</div>
-                      <div className="text-xs text-gray-400">{(paper.size_bytes / (1024*1024)).toFixed(2)} MB</div>
+                  <div key={idx} className="flex items-center justify-between bg-white border border-slate-100 p-3 rounded-xl shadow-sm hover:border-primary-200 transition-colors group">
+                    <div className="truncate pr-4 flex-1">
+                      <div className="text-sm font-bold text-slate-800 truncate" title={paper.filename}>{paper.filename}</div>
+                      <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">{(paper.size_bytes / (1024*1024)).toFixed(2)} MB</div>
                     </div>
                     <button
                       onClick={() => handleOpenLocalPaper(paper.absolute_path)}
-                      className={`text-xs px-3 py-1.5 rounded font-semibold transition-all ${
+                      className={`text-xs px-4 py-2 rounded-lg font-bold transition-all focus-ring ${
                         paper.already_analyzed
-                          ? 'bg-green-50 text-green-700 hover:bg-green-100 border border-green-200'
-                          : 'bg-blue-600 text-white hover:bg-blue-700 shadow-2xs'
+                          ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-100'
+                          : 'bg-primary-600 text-white hover:bg-primary-700 shadow-soft'
                       }`}
                     >
-                      {paper.already_analyzed ? 'Open Workspace' : 'Open in App'}
+                      {paper.already_analyzed ? 'Open' : 'Analyze'}
                     </button>
                   </div>
                 ))
               )}
             </div>
-          </div>
+          </section>
         </div>
 
-        {/* Search and Filters */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4 sm:mb-0">
-            Recent Analyses
-          </h2>
-          <SearchBar
-            value={searchQuery}
-            onChange={setSearchQuery}
-            placeholder="Search by title, authors, or arXiv ID..."
-          />
-        </div>
-
-        {/* Analyses Grid */}
-        {filteredAnalyses.length === 0 ? (
-          <div className="bg-white rounded-lg shadow-sm border p-12 text-center">
-            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
+        {/* Search and Header Section */}
+        <section className="mb-10" aria-labelledby="recent-heading">
+          <div className="flex flex-col md:flex-row justify-between items-end md:items-center gap-6 mb-8">
+            <div className="flex items-center space-x-4">
+              <h2 id="recent-heading" className="text-3xl font-extrabold text-slate-900 tracking-tight">
+                Recent Analyses
+              </h2>
+              <button
+                onClick={() => {
+                  setRefreshing(true);
+                  fetchAnalyses();
+                  fetchStats();
+                }}
+                disabled={refreshing}
+                className="p-2 text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded-xl transition-all focus-ring"
+                aria-label="Refresh analyses list"
+              >
+                <svg className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              </button>
             </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No analyses yet</h3>
-            <p className="text-gray-500 mb-6">
-              Upload your first research paper to get started with AI-powered analysis.
-            </p>
-            <Link
-              to="/upload"
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
-            >
-              Upload Your First Paper
-            </Link>
+            <SearchBar
+              value={searchQuery}
+              onChange={setSearchQuery}
+              placeholder="Search library..."
+            />
           </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredAnalyses.map((analysis) => (
-              <AnalysisCard
-                key={analysis.analysis_id}
-                analysis={analysis}
-                onDelete={handleAnalysisDeleted}
-              />
-            ))}
-          </div>
-        )}
 
-        {/* Load More Button */}
-        {analyses.length >= 20 && (
-          <div className="text-center mt-8">
-            <button className="bg-white border border-gray-300 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-50 transition-colors">
-              Load More Analyses
-            </button>
+          {/* Analyses Grid */}
+          <div className="relative" aria-live="polite">
+            {filteredAnalyses.length === 0 ? (
+              <div className="bg-white rounded-3xl shadow-soft border border-slate-100 p-20 text-center">
+                <div className="w-20 h-20 bg-slate-50 rounded-3xl flex items-center justify-center mx-auto mb-6">
+                  <svg className="w-10 h-10 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-bold text-slate-900 mb-3">Your library is empty</h3>
+                <p className="text-slate-500 mb-8 max-w-sm mx-auto font-medium">
+                  Begin your research journey by uploading your first paper or scanning a local folder.
+                </p>
+                <Link
+                  to="/upload"
+                  className="inline-flex items-center px-8 py-3 border border-transparent text-sm font-bold rounded-2xl text-white bg-primary-600 hover:bg-primary-700 shadow-soft hover:shadow-soft-lg transition-all focus-ring"
+                >
+                  Start First Analysis
+                </Link>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {filteredAnalyses.map((analysis) => (
+                  <AnalysisCard
+                    key={analysis.analysis_id}
+                    analysis={analysis}
+                    onDelete={handleAnalysisDeleted}
+                  />
+                ))}
+              </div>
+            )}
           </div>
-        )}
+
+          {/* Load More Button */}
+          {analyses.length >= 20 && (
+            <div className="text-center mt-12">
+              <button className="bg-white border border-slate-200 text-slate-600 font-bold px-8 py-3 rounded-2xl hover:bg-slate-50 hover:border-slate-300 transition-all focus-ring shadow-sm">
+                Load More Papers
+              </button>
+            </div>
+          )}
+        </section>
       </div>
-    </div>
+    </main>
   );
 };
 

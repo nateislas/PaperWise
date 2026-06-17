@@ -7,36 +7,39 @@ const Header: React.FC = () => {
   const isDashboard = location.pathname === '/';
 
   return (
-    <header className="sticky top-0 z-50 bg-white shadow-md border-b border-gray-200">
-      <div className="container mx-auto px-4 py-4">
-        <div className="flex items-center justify-between">
-          <Link to="/" className="flex items-center space-x-3 hover:opacity-80 transition-opacity">
-            <div className="flex items-center space-x-2">
-              <BookOpen className="h-8 w-8 text-primary-600" />
-              <Brain className="h-6 w-6 text-primary-500" />
+    <header className="sticky top-0 z-50 glass-panel border-b border-slate-200/50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-20">
+          <Link 
+            to="/" 
+            className="flex items-center space-x-4 focus-ring rounded-lg p-1 group"
+            aria-label="PaperWise Home"
+          >
+            <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-primary-600 text-white shadow-soft transition-transform group-hover:scale-105">
+              <BookOpen className="h-7 w-7" />
             </div>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">PaperWise</h1>
-              <p className="text-sm text-gray-600">AI-Powered Research Paper Analysis</p>
+            <div className="hidden sm:block">
+              <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">PaperWise</h1>
+              <p className="text-xs font-medium text-slate-500 uppercase tracking-widest">AI Research Partner</p>
             </div>
           </Link>
           
-          <div className="flex items-center space-x-4">
+          <nav className="flex items-center space-x-6" aria-label="Main Navigation">
             {!isDashboard && (
               <Link
                 to="/"
-                className="text-gray-600 hover:text-gray-900 transition-colors"
+                className="text-sm font-semibold text-slate-600 hover:text-primary-600 transition-colors focus-ring rounded-md px-2 py-1"
               >
-                Dashboard
+                Library
               </Link>
             )}
             <Link
               to="/upload"
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 transition-colors duration-200"
+              className="inline-flex items-center px-6 py-2.5 border border-transparent text-sm font-bold rounded-xl text-white bg-primary-600 hover:bg-primary-700 shadow-soft hover:shadow-soft-lg transition-all duration-200 focus-ring"
             >
               Upload Paper
             </Link>
-          </div>
+          </nav>
         </div>
       </div>
     </header>

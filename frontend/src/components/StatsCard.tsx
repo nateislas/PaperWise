@@ -11,31 +11,31 @@ const StatsCard: React.FC<StatsCardProps> = ({ title, value, icon, color }) => {
   const getColorClasses = (color: string) => {
     switch (color) {
       case 'blue':
-        return 'bg-blue-50 text-blue-600';
+        return 'bg-primary-50 text-primary-600 border-primary-100';
       case 'green':
-        return 'bg-green-50 text-green-600';
+        return 'bg-emerald-50 text-emerald-600 border-emerald-100';
       case 'yellow':
-        return 'bg-yellow-50 text-yellow-600';
+        return 'bg-amber-50 text-amber-600 border-amber-100';
       case 'red':
-        return 'bg-red-50 text-red-600';
+        return 'bg-rose-50 text-rose-600 border-rose-100';
       case 'purple':
-        return 'bg-purple-50 text-purple-600';
+        return 'bg-violet-50 text-violet-600 border-violet-100';
       default:
-        return 'bg-gray-50 text-gray-600';
+        return 'bg-slate-50 text-slate-600 border-slate-100';
     }
   };
 
   return (
-    <div className="bg-white overflow-hidden shadow-sm rounded-lg border">
-      <div className="p-5">
+    <div className="bg-white overflow-hidden shadow-soft rounded-2xl border border-slate-100 transition-all duration-300 hover:shadow-soft-lg hover:-translate-y-1">
+      <div className="p-6">
         <div className="flex items-center">
-          <div className={`flex-shrink-0 w-12 h-12 rounded-lg flex items-center justify-center ${getColorClasses(color)}`}>
-            <span className="text-xl">{icon}</span>
+          <div className={`flex-shrink-0 w-14 h-14 rounded-2xl border flex items-center justify-center text-2xl ${getColorClasses(color)}`}>
+            {icon}
           </div>
           <div className="ml-5 w-0 flex-1">
             <dl>
-              <dt className="text-sm font-medium text-gray-500 truncate">{title}</dt>
-              <dd className="text-2xl font-semibold text-gray-900">{value}</dd>
+              <dt className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-1">{title}</dt>
+              <dd className="text-3xl font-bold text-slate-900 leading-none">{value}</dd>
             </dl>
           </div>
         </div>

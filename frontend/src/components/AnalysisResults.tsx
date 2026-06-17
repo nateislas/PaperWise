@@ -134,570 +134,326 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({ analysis, isLoading }
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-10">
       {/* Header with Table of Contents Toggle */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h1 className="text-2xl font-bold text-gray-900">Research Paper Analysis</h1>
-          {detectedField && (
-            <div className="text-sm px-3 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
-              {detectedField.toUpperCase()}{subfield && ` (${subfield})`} {typeof fieldConfidence === 'number' && `(${Math.round(fieldConfidence * 100)}%)`}
-              {conferences && conferences.length > 0 && (
-                <div className="text-xs mt-1">
-                  {conferences.slice(0, 2).join(', ')}
-                </div>
-              )}
-            </div>
-          )}
+      <section 
+        className="bg-white rounded-3xl shadow-soft border border-slate-100 p-8"
+        aria-labelledby="analysis-header"
+      >
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-6">
+          <div className="flex-1">
+            <h1 id="analysis-header" className="text-3xl font-extrabold text-slate-900 tracking-tight mb-2">
+              Critical Analysis
+            </h1>
+            {detectedField && (
+              <div className="flex flex-wrap gap-2 items-center">
+                <span className="text-xs font-bold px-3 py-1 rounded-full bg-primary-50 text-primary-700 border border-primary-100 uppercase tracking-wider">
+                  {detectedField}{subfield && ` / ${subfield}`}
+                </span>
+                {typeof fieldConfidence === 'number' && (
+                  <span className="text-xs font-bold text-slate-400">
+                    {Math.round(fieldConfidence * 100)}% Match
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
           <button
             onClick={() => setShowTableOfContents(!showTableOfContents)}
-            className="flex items-center space-x-2 px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+            className="flex items-center justify-center space-x-2 px-6 py-2.5 text-sm font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-all focus-ring"
+            aria-expanded={showTableOfContents}
+            aria-controls="table-of-contents"
           >
             {showTableOfContents ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
-            <span>{showTableOfContents ? 'Hide' : 'Show'} Contents</span>
+            <span>{showTableOfContents ? 'Hide' : 'Show'} Index</span>
           </button>
         </div>
 
         {/* Table of Contents */}
         {showTableOfContents && (
-          <div className="bg-gray-50 rounded-lg p-4 mb-4">
-            <h3 className="text-sm font-semibold text-gray-700 mb-3">Table of Contents</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+          <nav 
+            id="table-of-contents" 
+            className="bg-slate-50/50 rounded-2xl p-6 mb-4 animate-slide-up"
+            aria-label="Table of contents"
+          >
+            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Jump to section</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
               {sections.map((section) => (
                 <button
                   key={section.id}
                   onClick={() => scrollToSection(section.id)}
-                  className="flex items-center space-x-2 text-left p-2 hover:bg-white rounded-md transition-colors group"
+                  className="flex items-center space-x-3 text-left p-3 hover:bg-white hover:shadow-soft rounded-xl transition-all group focus-ring"
                 >
-                  <section.icon className={`h-4 w-4 ${section.color}`} />
-                  <span className="text-sm text-gray-700 group-hover:text-gray-900">{section.title}</span>
+                  <div className={`p-2 rounded-lg bg-white shadow-sm group-hover:scale-110 transition-transform ${section.color}`}>
+                    <section.icon className="h-4 w-4" />
+                  </div>
+                  <span className="text-sm font-bold text-slate-600 group-hover:text-primary-600">{section.title}</span>
                 </button>
               ))}
             </div>
-          </div>
+          </nav>
+        )}
+      </section>
+
+      {/* Analysis Sections */}
+      <div className="space-y-12">
+        {/* Executive Summary */}
+        {executive_summary && (
+          <section id="executive-summary" className="bg-white rounded-3xl shadow-soft border border-slate-100 overflow-hidden" aria-labelledby="heading-summary">
+            <div className="px-8 py-6 border-b border-slate-50 bg-slate-50/30 flex items-center space-x-3">
+              <BookOpen className="h-5 w-5 text-primary-600" />
+              <h2 id="heading-summary" className="text-xl font-bold text-slate-900">Executive Summary</h2>
+            </div>
+            <div className="p-8 prose prose-slate max-w-none">
+              <ReactMarkdown>{executive_summary}</ReactMarkdown>
+            </div>
+          </section>
+        )}
+
+        {/* Novelty Assessment */}
+        {novelty_assessment && (
+          <section id="novelty-assessment" className="bg-white rounded-3xl shadow-soft border border-slate-100 overflow-hidden" aria-labelledby="heading-novelty">
+            <div className="px-8 py-6 border-b border-slate-50 bg-slate-50/30 flex items-center space-x-3">
+              <Zap className="h-5 w-5 text-violet-600" />
+              <h2 id="heading-novelty" className="text-xl font-bold text-slate-900">Novelty Assessment</h2>
+            </div>
+            <div className="p-8 space-y-8">
+              {novelty_assessment.key_innovation && (
+                <div className="bg-violet-50/50 rounded-2xl p-6 border border-violet-100">
+                  <h3 className="text-sm font-bold text-violet-700 uppercase tracking-widest mb-3">Key Innovation</h3>
+                  <div className="prose prose-sm max-w-none text-slate-700 font-medium">
+                    <ReactMarkdown>{novelty_assessment.key_innovation}</ReactMarkdown>
+                  </div>
+                </div>
+              )}
+              {novelty_assessment.incremental_advances && novelty_assessment.incremental_advances.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">Incremental Advances</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {novelty_assessment.incremental_advances.map((advance: string, index: number) => (
+                      <div key={index} className="flex items-start space-x-3 p-4 bg-slate-50 rounded-xl border border-slate-100">
+                        <div className="mt-1 h-1.5 w-1.5 rounded-full bg-violet-400 flex-shrink-0" />
+                        <span className="text-sm font-medium text-slate-700">{advance}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-4 border-t border-slate-100">
+                {novelty_assessment.novelty_score && (
+                  <div className="flex flex-col">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Novelty Rating</span>
+                    <span className="text-2xl font-black text-slate-900">{novelty_assessment.novelty_score}</span>
+                  </div>
+                )}
+                {novelty_assessment.justification && (
+                  <div className="flex flex-col">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Assessment Basis</span>
+                    <span className="text-sm font-medium text-slate-600 leading-relaxed">{novelty_assessment.justification}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* Methodological Evaluation */}
+        {methodological_evaluation && (
+          <section id="methodological-evaluation" className="bg-white rounded-3xl shadow-soft border border-slate-100 overflow-hidden" aria-labelledby="heading-methodology">
+            <div className="px-8 py-6 border-b border-slate-50 bg-slate-50/30 flex items-center space-x-3">
+              <CheckCircle className="h-5 w-5 text-emerald-600" />
+              <h2 id="heading-methodology" className="text-xl font-bold text-slate-900">Methodological Evaluation</h2>
+            </div>
+            <div className="p-8 space-y-8">
+              {methodological_evaluation.approach_strength && (
+                <div className="bg-emerald-50/50 rounded-2xl p-6 border border-emerald-100">
+                  <h3 className="text-sm font-bold text-emerald-700 uppercase tracking-widest mb-3">Approach Strengths</h3>
+                  <div className="prose prose-sm max-w-none text-slate-700 font-medium">
+                    <ReactMarkdown>{methodological_evaluation.approach_strength}</ReactMarkdown>
+                  </div>
+                </div>
+              )}
+              {methodological_evaluation.potential_issues && methodological_evaluation.potential_issues.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">Methodological Risks</h3>
+                  <div className="space-y-3">
+                    {methodological_evaluation.potential_issues.map((issue: string, index: number) => (
+                      <div key={index} className="flex items-center space-x-3 p-4 bg-rose-50/50 rounded-xl border border-rose-100">
+                        <AlertTriangle className="h-4 w-4 text-rose-500 flex-shrink-0" />
+                        <span className="text-sm font-bold text-rose-900">{issue}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-4 border-t border-slate-100">
+                {methodological_evaluation.rigor_assessment && (
+                  <div className="flex flex-col">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Rigor Score</span>
+                    <span className="text-2xl font-black text-slate-900">{methodological_evaluation.rigor_assessment}</span>
+                  </div>
+                )}
+                {methodological_evaluation.reproducibility && (
+                  <div className="flex flex-col">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Reproducibility</span>
+                    <span className="text-sm font-bold text-emerald-600">{methodological_evaluation.reproducibility}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* Critical Review */}
+        {critical_review && (
+          <section id="critical-review" className="bg-slate-900 rounded-3xl shadow-soft border border-slate-800 overflow-hidden" aria-labelledby="heading-critical">
+            <div className="px-8 py-6 border-b border-slate-800 bg-white/5 flex items-center space-x-3">
+              <AlertTriangle className="h-5 w-5 text-amber-400" />
+              <h2 id="heading-critical" className="text-xl font-bold text-white">Critical Review</h2>
+            </div>
+            <div className="p-8 space-y-8">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {critical_review.major_strengths && critical_review.major_strengths.length > 0 && (
+                  <div className="bg-emerald-500/10 rounded-2xl p-6 border border-emerald-500/20">
+                    <h3 className="text-xs font-bold text-emerald-400 uppercase tracking-widest mb-4">Major Strengths</h3>
+                    <ul className="space-y-3">
+                      {critical_review.major_strengths.map((strength: string, index: number) => (
+                        <li key={index} className="flex items-start space-x-3 text-sm font-medium text-emerald-50">
+                          <CheckCircle className="h-4 w-4 text-emerald-400 mt-0.5 flex-shrink-0" />
+                          <span>{strength}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {critical_review.major_concerns && critical_review.major_concerns.length > 0 && (
+                  <div className="bg-rose-500/10 rounded-2xl p-6 border border-rose-500/20">
+                    <h3 className="text-xs font-bold text-rose-400 uppercase tracking-widest mb-4">Major Concerns</h3>
+                    <ul className="space-y-3">
+                      {critical_review.major_concerns.map((concern: string, index: number) => (
+                        <li key={index} className="flex items-start space-x-3 text-sm font-medium text-rose-50">
+                          <AlertTriangle className="h-4 w-4 text-rose-400 mt-0.5 flex-shrink-0" />
+                          <span>{concern}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+              
+              {critical_review.alternative_approaches && critical_review.alternative_approaches.length > 0 && (
+                <div>
+                  <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4">Alternative Approaches</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {critical_review.alternative_approaches.map((approach: string, index: number) => (
+                      <div key={index} className="p-4 bg-white/5 rounded-xl border border-white/10 text-xs font-bold text-slate-300">
+                        {approach}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {critical_review.robustness && (
+                <div className="pt-6 border-t border-slate-800">
+                  <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">Robustness Assessment</h3>
+                  <div className="text-sm font-medium text-slate-300 leading-relaxed italic">
+                    {critical_review.robustness}
+                  </div>
+                </div>
+              )}
+            </div>
+          </section>
+        )}
+
+        {/* Impact Assessment */}
+        {impact_assessment && (
+          <section id="impact-assessment" className="bg-white rounded-3xl shadow-soft border border-slate-100 overflow-hidden" aria-labelledby="heading-impact">
+            <div className="px-8 py-6 border-b border-slate-50 bg-slate-50/30 flex items-center space-x-3">
+              <TrendingUp className="h-5 w-5 text-indigo-600" />
+              <h2 id="heading-impact" className="text-xl font-bold text-slate-900">Impact Assessment</h2>
+            </div>
+            <div className="p-8 grid grid-cols-1 md:grid-cols-3 gap-8">
+              {impact_assessment.theoretical_contribution && (
+                <div className="space-y-3">
+                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Theoretical</h3>
+                  <div className="text-sm font-medium text-slate-700 leading-relaxed">{impact_assessment.theoretical_contribution}</div>
+                </div>
+              )}
+              {impact_assessment.practical_significance && (
+                <div className="space-y-3">
+                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Practical</h3>
+                  <div className="text-sm font-medium text-slate-700 leading-relaxed">{impact_assessment.practical_significance}</div>
+                </div>
+              )}
+              {impact_assessment.field_impact && (
+                <div className="space-y-3">
+                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Field Impact</h3>
+                  <div className="text-sm font-medium text-slate-700 leading-relaxed">{impact_assessment.field_impact}</div>
+                </div>
+              )}
+            </div>
+          </section>
+        )}
+
+        {/* Research Opportunities */}
+        {research_opportunities && (
+          <section id="research-opportunities" className="bg-amber-50 rounded-3xl shadow-soft border border-amber-100 overflow-hidden" aria-labelledby="heading-opps">
+            <div className="px-8 py-6 border-b border-amber-100 bg-white/40 flex items-center space-x-3">
+              <Lightbulb className="h-5 w-5 text-amber-600" />
+              <h2 id="heading-opps" className="text-xl font-bold text-slate-900">Research Opportunities</h2>
+            </div>
+            <div className="p-8 space-y-8">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {research_opportunities.immediate_extensions && research_opportunities.immediate_extensions.length > 0 && (
+                  <div>
+                    <h3 className="text-xs font-bold text-amber-700 uppercase tracking-widest mb-4">Immediate Extensions</h3>
+                    <div className="space-y-2">
+                      {research_opportunities.immediate_extensions.map((ext: string, index: number) => (
+                        <div key={index} className="p-4 bg-white rounded-xl shadow-sm border border-amber-200/50 text-sm font-bold text-slate-800">
+                          {ext}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {research_opportunities.broader_directions && research_opportunities.broader_directions.length > 0 && (
+                  <div>
+                    <h3 className="text-xs font-bold text-amber-700 uppercase tracking-widest mb-4">Broader Directions</h3>
+                    <div className="space-y-2">
+                      {research_opportunities.broader_directions.map((dir: string, index: number) => (
+                        <div key={index} className="p-4 bg-white rounded-xl shadow-sm border border-amber-200/50 text-sm font-bold text-slate-800">
+                          {dir}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </section>
         )}
       </div>
 
-
-
-      {/* Executive Summary */}
-      {executive_summary && (
-        <div id="executive-summary" className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center space-x-2 mb-4">
-            <BookOpen className="h-5 w-5 text-primary-600" />
-            <h2 className="text-xl font-semibold text-gray-900">Executive Summary</h2>
-          </div>
-          <div className="prose prose-base max-w-none">
-            <ReactMarkdown>{executive_summary}</ReactMarkdown>
-          </div>
-        </div>
-      )}
-
-      {/* Novelty Assessment */}
-      {novelty_assessment && (
-        <div id="novelty-assessment" className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center space-x-2 mb-4">
-            <Zap className="h-5 w-5 text-purple-600" />
-            <h2 className="text-xl font-semibold text-gray-900">Novelty Assessment</h2>
-          </div>
-          <div className="space-y-4">
-            {novelty_assessment.key_innovation && (
-              <div>
-                <h3 className="text-lg font-medium text-gray-800 mb-2">Key Innovation</h3>
-                <div className="prose prose-base max-w-none">
-                  <ReactMarkdown>{novelty_assessment.key_innovation}</ReactMarkdown>
-                </div>
-              </div>
-            )}
-            {novelty_assessment.incremental_advances && novelty_assessment.incremental_advances.length > 0 && (
-              <div>
-                <h3 className="text-lg font-medium text-gray-800 mb-2">Incremental Advances</h3>
-                <ul className="space-y-1">
-                  {novelty_assessment.incremental_advances.map((advance: string, index: number) => (
-                    <li key={index} className="text-base text-gray-700">• {advance}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            <div className="grid md:grid-cols-2 gap-4">
-              {novelty_assessment.novelty_score && (
-                <div className="p-3 rounded border bg-gray-50">
-                  <div className="text-xs font-semibold text-gray-600 mb-1">Novelty Score</div>
-                  <div className="text-base font-medium text-gray-900">{novelty_assessment.novelty_score}</div>
-                </div>
-              )}
-              {novelty_assessment.justification && (
-                <div className="p-3 rounded border bg-gray-50">
-                  <div className="text-xs font-semibold text-gray-600 mb-1">Justification</div>
-                  <div className="text-base text-gray-800">{novelty_assessment.justification}</div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Gap Analysis */}
-      {gap_analysis && (
-        <div id="gap-analysis" className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center space-x-2 mb-4">
-            <Target className="h-5 w-5 text-blue-600" />
-            <h2 className="text-xl font-semibold text-gray-900">Gap Analysis</h2>
-          </div>
-          <div className="space-y-4">
-            {gap_analysis.problem_statement && (
-              <div>
-                <h3 className="text-lg font-medium text-gray-800 mb-2">Problem Statement</h3>
-                <div className="prose prose-base max-w-none">
-                  <ReactMarkdown>{gap_analysis.problem_statement}</ReactMarkdown>
-                </div>
-              </div>
-            )}
-            {gap_analysis.motivation && (
-              <div>
-                <h3 className="text-lg font-medium text-gray-800 mb-2">Motivation</h3>
-                <div className="prose prose-base max-w-none">
-                  <ReactMarkdown>{gap_analysis.motivation}</ReactMarkdown>
-                </div>
-              </div>
-            )}
-            {gap_analysis.scope && (
-              <div>
-                <h3 className="text-lg font-medium text-gray-800 mb-2">Scope Limitations</h3>
-                <div className="prose prose-base max-w-none">
-                  <ReactMarkdown>{gap_analysis.scope}</ReactMarkdown>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Methodological Evaluation */}
-      {methodological_evaluation && (
-        <div id="methodological-evaluation" className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center space-x-2 mb-4">
-            <CheckCircle className="h-5 w-5 text-green-600" />
-            <h2 className="text-xl font-semibold text-gray-900">Methodological Evaluation</h2>
-          </div>
-          <div className="space-y-4">
-            {methodological_evaluation.approach_strength && (
-              <div>
-                <h3 className="text-lg font-medium text-gray-800 mb-2">Approach Strengths</h3>
-                <div className="prose prose-base max-w-none">
-                  <ReactMarkdown>{methodological_evaluation.approach_strength}</ReactMarkdown>
-                </div>
-              </div>
-            )}
-            {methodological_evaluation.potential_issues && methodological_evaluation.potential_issues.length > 0 && (
-              <div>
-                <h3 className="text-lg font-medium text-gray-800 mb-2">Potential Issues</h3>
-                <ul className="space-y-1">
-                  {methodological_evaluation.potential_issues.map((issue: string, index: number) => (
-                    <li key={index} className="text-base text-gray-700">• {issue}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            <div className="grid md:grid-cols-2 gap-4">
-              {methodological_evaluation.rigor_assessment && (
-                <div className="p-3 rounded border bg-gray-50">
-                  <div className="text-xs font-semibold text-gray-600 mb-1">Rigor Assessment</div>
-                  <div className="text-base font-medium text-gray-900">{methodological_evaluation.rigor_assessment}</div>
-                </div>
-              )}
-              {methodological_evaluation.reproducibility && (
-                <div className="p-3 rounded border bg-gray-50">
-                  <div className="text-xs font-semibold text-gray-600 mb-1">Reproducibility</div>
-                  <div className="text-base text-gray-800">{methodological_evaluation.reproducibility}</div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Evidence Quality */}
-      {evidence_quality && (
-        <div id="evidence-quality" className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center space-x-2 mb-4">
-            <AlertTriangle className="h-5 w-5 text-orange-600" />
-            <h2 className="text-xl font-semibold text-gray-900">Evidence Quality</h2>
-          </div>
-          <div className="space-y-4">
-            {evidence_quality.empirical_support && (
-              <div>
-                <h3 className="text-lg font-medium text-gray-800 mb-2">Empirical Support</h3>
-                <div className="prose prose-base max-w-none">
-                  <ReactMarkdown>{evidence_quality.empirical_support}</ReactMarkdown>
-                </div>
-              </div>
-            )}
-            {evidence_quality.key_results && evidence_quality.key_results.length > 0 && (
-              <div>
-                <h3 className="text-lg font-medium text-gray-800 mb-2">Key Results</h3>
-                <ul className="space-y-1">
-                  {evidence_quality.key_results.map((result: string, index: number) => (
-                    <li key={index} className="text-base text-gray-700">• {result}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            <div className="grid md:grid-cols-2 gap-4">
-              {evidence_quality.statistical_significance && (
-                <div className="p-3 rounded border bg-gray-50">
-                  <div className="text-xs font-semibold text-gray-600 mb-1">Statistical Significance</div>
-                  <div className="text-base text-gray-800">{evidence_quality.statistical_significance}</div>
-                </div>
-              )}
-              {evidence_quality.baseline_comparison && (
-                <div className="p-3 rounded border bg-gray-50">
-                  <div className="text-xs font-semibold text-gray-600 mb-1">Baseline Comparison</div>
-                  <div className="text-base text-gray-800">{evidence_quality.baseline_comparison}</div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Impact Assessment */}
-      {impact_assessment && (
-        <div id="impact-assessment" className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center space-x-2 mb-4">
-            <TrendingUp className="h-5 w-5 text-indigo-600" />
-            <h2 className="text-xl font-semibold text-gray-900">Impact Assessment</h2>
-          </div>
-          <div className="space-y-4">
-            {impact_assessment.theoretical_contribution && (
-              <div>
-                <h3 className="text-lg font-medium text-gray-800 mb-2">Theoretical Contribution</h3>
-                <div className="prose prose-base max-w-none">
-                  <ReactMarkdown>{impact_assessment.theoretical_contribution}</ReactMarkdown>
-                </div>
-              </div>
-            )}
-            {impact_assessment.practical_significance && (
-              <div>
-                <h3 className="text-lg font-medium text-gray-800 mb-2">Practical Significance</h3>
-                <div className="prose prose-base max-w-none">
-                  <ReactMarkdown>{impact_assessment.practical_significance}</ReactMarkdown>
-                </div>
-              </div>
-            )}
-            {impact_assessment.field_impact && (
-              <div>
-                <h3 className="text-lg font-medium text-gray-800 mb-2">Field Impact</h3>
-                <div className="prose prose-base max-w-none">
-                  <ReactMarkdown>{impact_assessment.field_impact}</ReactMarkdown>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Research Opportunities */}
-      {research_opportunities && (
-        <div id="research-opportunities" className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center space-x-2 mb-4">
-            <Lightbulb className="h-5 w-5 text-yellow-600" />
-            <h2 className="text-xl font-semibold text-gray-900">Research Opportunities</h2>
-          </div>
-          <div className="space-y-4">
-            {research_opportunities.immediate_extensions && research_opportunities.immediate_extensions.length > 0 && (
-              <div>
-                <h3 className="text-lg font-medium text-gray-800 mb-2">Immediate Extensions</h3>
-                <ul className="space-y-1">
-                  {research_opportunities.immediate_extensions.map((extension: string, index: number) => (
-                    <li key={index} className="text-base text-gray-700">• {extension}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            {research_opportunities.broader_directions && research_opportunities.broader_directions.length > 0 && (
-              <div>
-                <h3 className="text-lg font-medium text-gray-800 mb-2">Broader Directions</h3>
-                <ul className="space-y-1">
-                  {research_opportunities.broader_directions.map((direction: string, index: number) => (
-                    <li key={index} className="text-base text-gray-700">• {direction}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            {research_opportunities.open_questions && research_opportunities.open_questions.length > 0 && (
-              <div>
-                <h3 className="text-lg font-medium text-gray-800 mb-2">Open Questions</h3>
-                <ul className="space-y-1">
-                  {research_opportunities.open_questions.map((question: string, index: number) => (
-                    <li key={index} className="text-base text-gray-700">• {question}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Implementation Guide */}
-      {implementation_guide && (
-        <div id="implementation-guide" className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center space-x-2 mb-4">
-            <Users className="h-5 w-5 text-gray-600" />
-            <h2 className="text-xl font-semibold text-gray-900">Implementation Guide</h2>
-          </div>
-          <div className="space-y-4">
-            <div className="grid md:grid-cols-2 gap-4">
-              {implementation_guide.complexity && (
-                <div className="p-3 rounded border bg-gray-50">
-                  <div className="text-xs font-semibold text-gray-600 mb-1">Complexity</div>
-                  <div className="text-base font-medium text-gray-900">{implementation_guide.complexity}</div>
-                </div>
-              )}
-              {implementation_guide.estimated_effort && (
-                <div className="p-3 rounded border bg-gray-50">
-                  <div className="text-xs font-semibold text-gray-600 mb-1">Estimated Effort</div>
-                  <div className="text-base text-gray-800">{implementation_guide.estimated_effort}</div>
-                </div>
-              )}
-            </div>
-            {implementation_guide.requirements && implementation_guide.requirements.length > 0 && (
-              <div>
-                <h3 className="text-lg font-medium text-gray-800 mb-2">Requirements</h3>
-                <ul className="space-y-1">
-                  {implementation_guide.requirements.map((req: string, index: number) => (
-                    <li key={index} className="text-base text-gray-700">• {req}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            {implementation_guide.missing_details && implementation_guide.missing_details.length > 0 && (
-              <div>
-                <h3 className="text-lg font-medium text-gray-800 mb-2">Missing Details</h3>
-                <ul className="space-y-1">
-                  {implementation_guide.missing_details.map((detail: string, index: number) => (
-                    <li key={index} className="text-base text-gray-700">• {detail}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Critical Review */}
-      {critical_review && (
-        <div id="critical-review" className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center space-x-2 mb-4">
-            <AlertTriangle className="h-5 w-5 text-red-600" />
-            <h2 className="text-xl font-semibold text-gray-900">Critical Review</h2>
-          </div>
-          <div className="space-y-4">
-            {critical_review.major_strengths && critical_review.major_strengths.length > 0 && (
-              <div>
-                <h3 className="text-lg font-medium text-gray-800 mb-2">Major Strengths</h3>
-                <ul className="space-y-1">
-                  {critical_review.major_strengths.map((strength: string, index: number) => (
-                    <li key={index} className="text-base text-gray-700">• {strength}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            {critical_review.major_concerns && critical_review.major_concerns.length > 0 && (
-              <div>
-                <h3 className="text-lg font-medium text-gray-800 mb-2">Major Concerns</h3>
-                <ul className="space-y-1">
-                  {critical_review.major_concerns.map((concern: string, index: number) => (
-                    <li key={index} className="text-base text-gray-700">• {concern}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            {critical_review.alternative_approaches && critical_review.alternative_approaches.length > 0 && (
-              <div>
-                <h3 className="text-lg font-medium text-gray-800 mb-2">Alternative Approaches</h3>
-                <ul className="space-y-1">
-                  {critical_review.alternative_approaches.map((approach: string, index: number) => (
-                    <li key={index} className="text-base text-gray-700">• {approach}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            {critical_review.robustness && (
-              <div>
-                <h3 className="text-lg font-medium text-gray-800 mb-2">Robustness Assessment</h3>
-                <div className="prose prose-base max-w-none">
-                  <ReactMarkdown>{critical_review.robustness}</ReactMarkdown>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Key Insights - Legacy */}
-      {key_insights && key_insights.length > 0 && (
-        <div id="key-insights" className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center space-x-2 mb-4">
-            <Lightbulb className="h-5 w-5 text-yellow-600" />
-            <h2 className="text-xl font-semibold text-gray-900">Key Insights</h2>
-          </div>
-          <div className="space-y-3">
-            {key_insights.map((insight: string, index: number) => (
-              <div key={index} className="flex items-start space-x-3 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
-                <div className="flex-shrink-0 w-6 h-6 bg-yellow-100 rounded-full flex items-center justify-center">
-                  <span className="text-xs font-medium text-yellow-700">{index + 1}</span>
-                </div>
-                <p className="text-gray-700 leading-relaxed">{insight}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Detailed Analysis */}
-      {detailed_analysis && Object.values(detailedAnalysisSections).some(section => section.length > 0) && (
-        <div id="detailed-analysis" className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center space-x-2 mb-4">
-            <Target className="h-5 w-5 text-primary-600" />
-            <h2 className="text-xl font-semibold text-gray-900">Detailed Analysis</h2>
-          </div>
-          
-          <div className="space-y-6">
-            {/* Research Problem and Motivation */}
-            {detailedAnalysisSections.research_problem && (
-              <div className="analysis-methodology">
-                <h3 className="text-lg font-medium text-gray-800 mb-3">Research Problem and Motivation</h3>
-                <div className="prose prose-sm max-w-none">
-                  <ReactMarkdown>{detailedAnalysisSections.research_problem}</ReactMarkdown>
-                </div>
-              </div>
-            )}
-
-            {/* Methodology and Experimental Design */}
-            {detailedAnalysisSections.methodology && (
-              <div className="analysis-methodology">
-                <h3 className="text-lg font-medium text-gray-800 mb-3">Methodology and Experimental Design</h3>
-                <div className="prose prose-sm max-w-none">
-                  <ReactMarkdown>{detailedAnalysisSections.methodology}</ReactMarkdown>
-                </div>
-              </div>
-            )}
-
-            {/* Key Findings and Statistical Significance */}
-            {detailedAnalysisSections.key_findings && (
-              <div className="analysis-results">
-                <h3 className="text-lg font-medium text-gray-800 mb-3">Key Findings and Statistical Significance</h3>
-                <div className="prose prose-sm max-w-none">
-                  <ReactMarkdown>{detailedAnalysisSections.key_findings}</ReactMarkdown>
-                </div>
-              </div>
-            )}
-
-            {/* Context within the Broader Field */}
-            {detailedAnalysisSections.context && (
-              <div className="analysis-insight">
-                <h3 className="text-lg font-medium text-gray-800 mb-3">Context within the Broader Field</h3>
-                <div className="prose prose-sm max-w-none">
-                  <ReactMarkdown>{detailedAnalysisSections.context}</ReactMarkdown>
-                </div>
-              </div>
-            )}
-
-            {/* Strengths and Limitations */}
-            {detailedAnalysisSections.strengths_limitations && (
-              <div className="analysis-recommendation">
-                <h3 className="text-lg font-medium text-gray-800 mb-3">Strengths and Limitations</h3>
-                <div className="prose prose-sm max-w-none">
-                  <ReactMarkdown>{detailedAnalysisSections.strengths_limitations}</ReactMarkdown>
-                </div>
-              </div>
-            )}
-
-            {/* Future Research Directions */}
-            {detailedAnalysisSections.future_directions && (
-              <div className="analysis-recommendation">
-                <h3 className="text-lg font-medium text-gray-800 mb-3">Future Research Directions</h3>
-                <div className="prose prose-sm max-w-none">
-                  <ReactMarkdown>{detailedAnalysisSections.future_directions}</ReactMarkdown>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-
-
-      {/* Recommendations */}
-      {recommendations && (
-        <div id="recommendations" className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center space-x-2 mb-4">
-            <TrendingUp className="h-5 w-5 text-green-600" />
-            <h2 className="text-xl font-semibold text-gray-900">Recommendations</h2>
-          </div>
-          
-          <div className="grid md:grid-cols-2 gap-6">
-            {/* For Researchers */}
-            {recommendations.for_researchers && recommendations.for_researchers.length > 0 && (
-              <div className="space-y-3">
-                <div className="flex items-center space-x-2">
-                  <Users className="h-4 w-4 text-blue-600" />
-                  <h3 className="font-medium text-gray-900">For Researchers</h3>
-                </div>
-                <ul className="space-y-2">
-                  {recommendations.for_researchers.map((rec: string, index: number) => (
-                    <li key={index} className="flex items-start space-x-2 p-2 bg-blue-50 rounded-md">
-                      <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                      <span className="text-sm text-gray-700">{rec}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {/* For Practitioners */}
-            {recommendations.for_practitioners && recommendations.for_practitioners.length > 0 && (
-              <div className="space-y-3">
-                <div className="flex items-center space-x-2">
-                  <Zap className="h-4 w-4 text-orange-600" />
-                  <h3 className="font-medium text-gray-900">For Practitioners</h3>
-                </div>
-                <ul className="space-y-2">
-                  {recommendations.for_practitioners.map((rec: string, index: number) => (
-                    <li key={index} className="flex items-start space-x-2 p-2 bg-orange-50 rounded-md">
-                      <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                      <span className="text-sm text-gray-700">{rec}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
       {/* Analysis Metadata */}
       {comprehensive_analysis.metadata && (
-        <div className="bg-gray-50 rounded-lg p-4">
-          <div className="flex items-center justify-between text-sm text-gray-600">
-            <div className="flex items-center space-x-4">
-              <span>Analysis ID: {analysis.analysis_id || 'N/A'}</span>
-              <span>Confidence: {Math.round((comprehensive_analysis.metadata?.analysis_confidence || 0) * 100)}%</span>
-            </div>
-            <span>Generated: {new Date(comprehensive_analysis.metadata?.analysis_timestamp || Date.now()).toLocaleString()}</span>
+        <footer className="bg-slate-100 rounded-2xl p-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+          <div className="flex items-center space-x-6">
+            <span>Analysis ID: {analysis.analysis_id || 'N/A'}</span>
+            <span>Confidence: {Math.round((comprehensive_analysis.metadata?.analysis_confidence || 0) * 100)}%</span>
           </div>
-        </div>
+          <span>Generated: {new Date(comprehensive_analysis.metadata?.analysis_timestamp || Date.now()).toLocaleDateString()}</span>
+        </footer>
       )}
 
       {/* Back to Top Button */}
       {showBackToTop && (
         <button
           onClick={scrollToTop}
-          className="fixed bottom-6 right-6 bg-primary-600 text-white p-3 rounded-full shadow-lg hover:bg-primary-700 transition-all duration-200 z-50"
+          className="fixed bottom-10 right-10 bg-slate-900 text-white p-4 rounded-2xl shadow-soft-lg hover:bg-primary-600 hover:-translate-y-1 transition-all duration-300 z-50 focus-ring animate-fade-in"
           aria-label="Back to top"
         >
-          <ArrowUp className="h-5 w-5" />
+          <ArrowUp className="h-6 w-6" />
         </button>
       )}
     </div>
