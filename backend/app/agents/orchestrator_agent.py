@@ -5,7 +5,7 @@ from langchain.schema import Document
 import uuid
 import time
 
-from app.agents.base_agent import BaseAgent
+from app.agents.base_agent import BaseAgent, agent
 from app.agents.methodology_agent import MethodologyAgent
 from app.agents.results_agent import ResultsAgent
 from app.agents.contextualization_agent import ContextualizationAgent
@@ -17,6 +17,7 @@ from app.agents.structured_section_extractor import StructuredSectionExtractor
 
 logger = logging.getLogger(__name__)
 
+@agent(name="OrchestratorAgent")
 class OrchestratorAgent(BaseAgent):
     """
     Main orchestrator agent that coordinates all specialized analysis agents

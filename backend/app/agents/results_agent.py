@@ -4,10 +4,11 @@ from langchain.schema import HumanMessage, SystemMessage
 import logging
 import re
 
-from app.agents.base_agent import BaseAgent
+from app.agents.base_agent import BaseAgent, agent
 
 logger = logging.getLogger(__name__)
 
+@agent(name="ResultsAgent")
 class ResultsAgent(BaseAgent):
     """
     Agent specialized in analyzing research results, findings, and statistical significance

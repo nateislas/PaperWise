@@ -6,7 +6,7 @@ services:
     env_file:
       - ./backend/.env
     ports:
-      - "8000:8000"
+      - "8081:8000"
     environment:
       - LLAMA_MODEL=${LLAMA_MODEL:-Llama-4-Maverick-17B-128E-Instruct-FP8}
       - LLAMA_TEMPERATURE=${LLAMA_TEMPERATURE:-0.1}
@@ -23,6 +23,12 @@ services:
       - MAX_TOKENS_PER_REQUEST=${MAX_TOKENS_PER_REQUEST:-4000}
       - CHROMA_PERSIST_DIRECTORY=${CHROMA_PERSIST_DIRECTORY:-./chroma_db}
       - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - AGENTOPS_API_KEY=${AGENTOPS_API_KEY}
+      - AGENTOPS_ENABLED=${AGENTOPS_ENABLED:-true}
+      - AGENTOPS_TRACE_NAME=${AGENTOPS_TRACE_NAME:-PaperWise Analysis}
+      - AGENTOPS_TAGS=${AGENTOPS_TAGS:-["paperwise","research","analysis"]}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - PAGEINDEX_API_KEY=${PAGEINDEX_API_KEY}
     volumes:
       - ./backend/uploads:/app/uploads
       - ./backend/chroma_db:/app/chroma_db
@@ -49,16 +55,24 @@ services:
       - LLAMA_BASE_URL=${LLAMA_BASE_URL:-https://api.llama.com/compat/v1/}
       - UPLOAD_DIR=${UPLOAD_DIR:-uploads}
       - CHROMA_PERSIST_DIRECTORY=${CHROMA_PERSIST_DIRECTORY:-./chroma_db}
+      - AGENTOPS_API_KEY=${AGENTOPS_API_KEY}
+      - AGENTOPS_ENABLED=${AGENTOPS_ENABLED:-true}
+      - AGENTOPS_TRACE_NAME=${AGENTOPS_TRACE_NAME:-PaperWise Worker}
+      - AGENTOPS_TAGS=${AGENTOPS_TAGS:-["paperwise","research","analysis","worker"]}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - PAGEINDEX_API_KEY=${PAGEINDEX_API_KEY}
     volumes:
       - ./backend/uploads:/app/uploads
       - ./backend/chroma_db:/app/chroma_db
     command: ["celery", "-A", "app.worker.celery_app", "worker", "--loglevel=INFO"]
     restart: unless-stopped
+    healthcheck:
+      disable: true
 
   redis:
     image: redis:7-alpine
     ports:
-      - "6379:6379"
+      - "6380:6379"
     volumes:
       - ./redis.conf:/usr/local/etc/redis/redis.conf
     command: redis-server /usr/local/etc/redis/redis.conf
@@ -69,9 +83,9 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     ports:
-      - "3000:3000"
+      - "3002:3000"
     environment:
-      - REACT_APP_API_URL=http://localhost:8000
+      - REACT_APP_API_URL=http://localhost:8081
     depends_on:
       - backend
     restart: unless-stopped

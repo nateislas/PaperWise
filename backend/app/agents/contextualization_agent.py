@@ -3,10 +3,11 @@ from langchain.schema import Document
 from langchain.schema import HumanMessage, SystemMessage
 import logging
 
-from app.agents.base_agent import BaseAgent
+from app.agents.base_agent import BaseAgent, agent
 
 logger = logging.getLogger(__name__)
 
+@agent(name="ContextualizationAgent")
 class ContextualizationAgent(BaseAgent):
     """
     Agent specialized in contextualizing research within the broader field and literature

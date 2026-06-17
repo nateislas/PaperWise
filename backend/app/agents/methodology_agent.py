@@ -3,10 +3,11 @@ from langchain.schema import Document
 from langchain.schema import HumanMessage, SystemMessage
 import logging
 
-from app.agents.base_agent import BaseAgent
+from app.agents.base_agent import BaseAgent, agent
 
 logger = logging.getLogger(__name__)
 
+@agent(name="MethodologyAgent")
 class MethodologyAgent(BaseAgent):
     """
     Agent specialized in analyzing research methodology, experimental design, and methods
