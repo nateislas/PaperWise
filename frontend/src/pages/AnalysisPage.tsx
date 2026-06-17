@@ -49,13 +49,14 @@ const AnalysisPage: React.FC<AnalysisPageProps> = () => {
       }
 
       const metadata = await metadataResponse.json();
-      console.log('📊 Analysis status:', metadata.analysis_info.status);
+      const status = metadata.analysis_info?.status || 'unknown';
+      console.log('📊 Analysis status:', status);
       console.log('📋 Full metadata:', metadata);
-      setAnalysisStatus(metadata.analysis_info.status);
+      setAnalysisStatus(status);
 
       // Extract fileId from original_filename if analysis is in progress
-      if (metadata.analysis_info.status === 'processing' || metadata.analysis_info.status === 'queued') {
-        const originalFilename = metadata.paper_info.original_filename;
+      if (status === 'processing' || status === 'queued') {
+        const originalFilename = metadata.paper_info?.original_filename;
         console.log('🔍 Extracting fileId from:', originalFilename);
         if (originalFilename && originalFilename.includes('_')) {
           const extractedFileId = originalFilename.split('_')[0];

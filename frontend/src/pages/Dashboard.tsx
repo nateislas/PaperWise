@@ -46,10 +46,14 @@ const Dashboard: React.FC = () => {
   const fetchAnalyses = useCallback(async () => {
     try {
       const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8081'}/api/v1/analyses?limit=20`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch analyses');
+      }
       const data = await response.json();
       setAnalyses(data.analyses || []);
     } catch (error) {
       console.error('Failed to fetch analyses:', error);
+      setAnalyses([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -59,10 +63,14 @@ const Dashboard: React.FC = () => {
   const fetchStats = useCallback(async () => {
     try {
       const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8081'}/api/v1/analyses/stats/summary`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch stats');
+      }
       const data = await response.json();
       setStats(data);
     } catch (error) {
       console.error('Failed to fetch stats:', error);
+      setStats(null);
     }
   }, []);
 
@@ -80,12 +88,13 @@ const Dashboard: React.FC = () => {
         throw new Error('Failed to scan directory');
       }
       const data = await response.json();
-      setLocalPapers(data || []);
+      setLocalPapers(Array.isArray(data) ? data : []);
       if (path !== undefined) {
         scannedPathRef.current = path;
       }
     } catch (err: any) {
       setScanError(err.message || 'Failed to scan laptop directory');
+      setLocalPapers([]);
     } finally {
       setIsScanning(false);
     }
@@ -114,9 +123,9 @@ const Dashboard: React.FC = () => {
       setFilteredAnalyses(analyses);
     } else {
       const filtered = analyses.filter(analysis => {
-        const title = analysis.paper_info.title.toLowerCase();
-        const authors = analysis.paper_info.authors.join(' ').toLowerCase();
-        const arxivId = analysis.paper_info.arxiv_id.toLowerCase();
+        const title = (analysis.paper_info?.title || '').toLowerCase();
+        const authors = (analysis.paper_info?.authors || []).join(' ').toLowerCase();
+        const arxivId = (analysis.paper_info?.arxiv_id || '').toLowerCase();
         const query = searchQuery.toLowerCase();
         
         return title.includes(query) || 
@@ -203,11 +212,11 @@ const Dashboard: React.FC = () => {
         </div>
 
         {/* Stats Cards */}
-        {stats && (
+        {stats && stats.by_status && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <StatsCard
               title="Total Analyses"
-              value={stats.total_analyses}
+              value={stats.total_analyses || 0}
               icon="📊"
               color="blue"
             />

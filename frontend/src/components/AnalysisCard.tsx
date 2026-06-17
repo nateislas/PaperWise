@@ -101,25 +101,25 @@ const AnalysisCard: React.FC<AnalysisCardProps> = ({ analysis, onDelete }) => {
         <div className="flex justify-between items-start mb-4">
           <div className="flex-1">
             <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              {truncateTitle(analysis.paper_info.title)}
+              {truncateTitle(analysis.paper_info?.title || 'Unknown Paper')}
             </h3>
             <p className="text-sm text-gray-600 mb-1">
-              {analysis.paper_info.authors.length > 0 
+              {analysis.paper_info?.authors && analysis.paper_info.authors.length > 0 
                 ? analysis.paper_info.authors.slice(0, 2).join(', ') + 
                   (analysis.paper_info.authors.length > 2 ? ' et al.' : '')
                 : 'Unknown Authors'
               }
             </p>
-            {analysis.paper_info.arxiv_id && (
+            {analysis.paper_info?.arxiv_id && (
               <p className="text-xs text-gray-500">
                 arXiv: {analysis.paper_info.arxiv_id}
               </p>
             )}
           </div>
           <div className="flex items-center space-x-2">
-            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(analysis.analysis_info.status)}`}>
-              <span className="mr-1">{getStatusIcon(analysis.analysis_info.status)}</span>
-              {analysis.analysis_info.status}
+            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(analysis.analysis_info?.status || 'unknown')}`}>
+              <span className="mr-1">{getStatusIcon(analysis.analysis_info?.status || 'unknown')}</span>
+              {analysis.analysis_info?.status || 'unknown'}
             </span>
           </div>
         </div>
@@ -128,13 +128,13 @@ const AnalysisCard: React.FC<AnalysisCardProps> = ({ analysis, onDelete }) => {
         <div className="space-y-2 mb-4">
           <div className="flex justify-between text-sm">
             <span className="text-gray-500">Type:</span>
-            <span className="text-gray-900 capitalize">{analysis.analysis_info.type}</span>
+            <span className="text-gray-900 capitalize">{analysis.analysis_info?.type || 'unknown'}</span>
           </div>
           <div className="flex justify-between text-sm">
             <span className="text-gray-500">Started:</span>
-            <span className="text-gray-900">{formatDate(analysis.analysis_info.started_at)}</span>
+            <span className="text-gray-900">{analysis.analysis_info?.started_at ? formatDate(analysis.analysis_info.started_at) : 'N/A'}</span>
           </div>
-          {analysis.analysis_info.completed_at && (
+          {analysis.analysis_info?.completed_at && (
             <div className="flex justify-between text-sm">
               <span className="text-gray-500">Completed:</span>
               <span className="text-gray-900">{formatDate(analysis.analysis_info.completed_at)}</span>

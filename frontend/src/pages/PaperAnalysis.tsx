@@ -17,7 +17,7 @@ const PaperAnalysis: React.FC = () => {
       const formData = new FormData();
       formData.append('file', file);
       
-      const apiBase = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+      const apiBase = process.env.REACT_APP_API_URL || 'http://localhost:8081';
       const response = await axios.post(`${apiBase}/api/v1/upload`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
