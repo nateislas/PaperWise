@@ -22,7 +22,21 @@ const SafePdfHighlighter = PdfHighlighter as any;
 const SafeTextHighlight = TextHighlight as any;
 const SafeAreaHighlight = AreaHighlight as any;
 
-const HighlightComponent = () => {
+const COLOR_PRESETS = [
+  { name: 'Yellow', highlightColor: 'rgba(250, 204, 21, 0.35)', underlineColor: 'rgba(234, 179, 8, 1)', solid: '#eab308' },
+  { name: 'Green', highlightColor: 'rgba(74, 222, 128, 0.35)', underlineColor: 'rgba(34, 197, 94, 1)', solid: '#22c55e' },
+  { name: 'Blue', highlightColor: 'rgba(96, 165, 250, 0.35)', underlineColor: 'rgba(59, 130, 246, 1)', solid: '#3b82f6' },
+  { name: 'Pink', highlightColor: 'rgba(248, 113, 113, 0.35)', underlineColor: 'rgba(239, 68, 68, 1)', solid: '#ef4444' },
+  { name: 'Purple', highlightColor: 'rgba(192, 132, 252, 0.35)', underlineColor: 'rgba(168, 85, 247, 1)', solid: '#a855f7' },
+];
+
+const HighlightComponent = ({ 
+  onStyleChange, 
+  onDelete 
+}: { 
+  onStyleChange: (id: string, color?: string, style?: string) => void;
+  onDelete: (id: string) => void;
+}) => {
   const { highlight, isScrolledTo } = useHighlightContainerContext();
   const isAreaHighlight = !highlight.position.rects || highlight.position.rects.length === 0;
 
@@ -31,13 +45,66 @@ const HighlightComponent = () => {
       highlight={highlight}
       isScrolledTo={isScrolledTo}
       onChange={(rect: any) => {}}
+      highlightColor={(highlight as any).highlightColor}
+      onStyleChange={(style: any) => {
+        onStyleChange(highlight.id, style.highlightColor, undefined);
+      }}
+      onDelete={() => {
+        onDelete(highlight.id);
+      }}
     />
   ) : (
     <SafeTextHighlight
       highlight={highlight}
       isScrolledTo={isScrolledTo}
       onClick={() => {}}
+      highlightColor={(highlight as any).highlightColor}
+      highlightStyle={(highlight as any).highlightStyle}
+      onStyleChange={(style: any) => {
+        onStyleChange(highlight.id, style.highlightColor, style.highlightStyle);
+      }}
+      onDelete={() => {
+        onDelete(highlight.id);
+      }}
     />
+  );
+};
+
+interface SelectionTipProps {
+  onAnnotate: (selection: any) => void;
+  onChat: (selection: any) => void;
+  utilsRef: React.MutableRefObject<any>;
+}
+
+const SelectionTip: React.FC<SelectionTipProps> = ({ onAnnotate, onChat, utilsRef }) => {
+  const selection = utilsRef.current?.getCurrentSelection();
+  if (!selection) return null;
+
+  return (
+    <div 
+      onMouseDown={(e) => e.stopPropagation()}
+      onMouseUp={(e) => e.stopPropagation()}
+      onClick={(e) => e.stopPropagation()}
+      className="bg-slate-900/95 backdrop-blur-md text-white rounded-xl shadow-soft-lg border border-slate-800 p-1 flex items-center space-x-1 animate-fade-in z-50"
+    >
+      <button
+        type="button"
+        onClick={() => onAnnotate(selection)}
+        className="flex items-center space-x-1.5 px-3 py-1.5 hover:bg-slate-800 rounded-lg transition-colors focus-ring text-xs font-bold text-slate-100 hover:text-white"
+      >
+        <span>📝</span>
+        <span>Annotate</span>
+      </button>
+      <div className="h-4 w-[1px] bg-slate-800" />
+      <button
+        type="button"
+        onClick={() => onChat(selection)}
+        className="flex items-center space-x-1.5 px-3 py-1.5 hover:bg-slate-800 rounded-lg transition-colors focus-ring text-xs font-bold text-slate-100 hover:text-white"
+      >
+        <span>💬</span>
+        <span>Ask AI</span>
+      </button>
+    </div>
   );
 };
 
@@ -53,8 +120,18 @@ const AnalysisPage: React.FC<AnalysisPageProps> = () => {
   const [activeTab, setActiveTab] = useState<'analysis' | 'annotations' | 'chat'>('analysis');
   const [annotations, setAnnotations] = useState<any[]>([]);
   const [newAnnotation, setNewAnnotation] = useState({ page: 1, text: '', note: '' });
+  const [selectedStyle, setSelectedStyle] = useState<'highlight' | 'underline'>('highlight');
+  const [selectedColorName, setSelectedColorName] = useState<string>('Yellow');
+  const [pdfScale, setPdfScale] = useState<number>(1.1);
+  const [chatContext, setChatContext] = useState<{ page: number; text: string } | null>(null);
 
-  const [chatMessages, setChatMessages] = useState<Array<{ role: 'user' | 'assistant', content: string, sources?: string[] }>>([
+  const [chatMessages, setChatMessages] = useState<Array<{ 
+    role: 'user' | 'assistant', 
+    content: string, 
+    sources?: string[], 
+    contextText?: string, 
+    fullContent?: string 
+  }>>([
     { role: 'assistant', content: 'Hello! I am your PaperWise AI assistant. Ask me anything about this paper!' }
   ]);
   const [chatInput, setChatInput] = useState('');
@@ -65,6 +142,7 @@ const AnalysisPage: React.FC<AnalysisPageProps> = () => {
   const [pendingPosition, setPendingPosition] = useState<any | null>(null);
   const [pendingHideTip, setPendingHideTip] = useState<(() => void) | null>(null);
   const scrollViewerTo = useRef<((highlight: any) => void) | null>(null);
+  const highlighterUtilsRef = useRef<any>(null);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -111,6 +189,32 @@ const AnalysisPage: React.FC<AnalysisPageProps> = () => {
     setPendingHideTip(() => () => {
       window.getSelection()?.removeAllRanges();
     });
+  };
+
+  const handleAnnotate = (selection: any) => {
+    handleSelectionFinished(selection);
+    if (highlighterUtilsRef.current) {
+      highlighterUtilsRef.current.setTip(null);
+    }
+  };
+
+  const handleChat = (selection: any) => {
+    setActiveTab('chat');
+    setChatContext({
+      page: selection.position?.pageNumber || 1,
+      text: selection.content?.text || ''
+    });
+    setChatInput('');
+    
+    window.getSelection()?.removeAllRanges();
+    if (highlighterUtilsRef.current) {
+      highlighterUtilsRef.current.setTip(null);
+    }
+
+    setTimeout(() => {
+      const input = document.querySelector('input[placeholder*="Ask the AI"]') as HTMLInputElement;
+      if (input) input.focus();
+    }, 100);
   };
 
   const fetchAnnotations = useCallback(async () => {
@@ -226,21 +330,35 @@ const AnalysisPage: React.FC<AnalysisPageProps> = () => {
     const text = messageToSend || chatInput;
     if (!text.trim() || isChatLoading) return;
 
-    const userMsg = { role: 'user' as const, content: text };
+    const userMsg = { 
+      role: 'user' as const, 
+      content: text,
+      contextText: chatContext ? `Page ${chatContext.page}: "${chatContext.text}"` : undefined,
+      fullContent: chatContext 
+        ? `Context from page ${chatContext.page} of the paper:\n"${chatContext.text}"\n\nQuestion: ${text}`
+        : text
+    };
+    
     setChatMessages(prev => [...prev, userMsg]);
     setChatInput('');
+    const currentContext = chatContext;
+    setChatContext(null);
     setIsChatLoading(true);
 
     try {
       const history = chatMessages.map(m => ({
         role: m.role,
-        content: m.content
+        content: (m as any).fullContent || m.content
       }));
+
+      const payloadMessage = currentContext
+        ? `Context from page ${currentContext.page} of the paper:\n"${currentContext.text}"\n\nQuestion: ${text}`
+        : text;
 
       const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8081'}/api/v1/analyses/${analysisId}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text, history })
+        body: JSON.stringify({ message: payloadMessage, history })
       });
 
       if (!response.ok) {
@@ -268,6 +386,7 @@ const AnalysisPage: React.FC<AnalysisPageProps> = () => {
     e.preventDefault();
     if (!newAnnotation.text.trim()) return;
     
+    const preset = COLOR_PRESETS.find(p => p.name === selectedColorName) || COLOR_PRESETS[0];
     const item: any = {
       id: Math.random().toString(36).substr(2, 9),
       page: newAnnotation.page,
@@ -277,12 +396,17 @@ const AnalysisPage: React.FC<AnalysisPageProps> = () => {
       // Add position and content if we have a pending highlight selection
       position: pendingPosition || undefined,
       content: pendingPosition ? { text: newAnnotation.text } : undefined,
-      comment: { text: newAnnotation.note || '' }
+      comment: { text: newAnnotation.note || '' },
+      highlightColor: selectedStyle === 'highlight' ? preset.highlightColor : preset.underlineColor,
+      highlightStyle: selectedStyle,
+      colorName: selectedColorName
     };
     
     const updated = [...annotations, item];
     setAnnotations(updated);
     setNewAnnotation({ page: 1, text: '', note: '' });
+    setSelectedStyle('highlight');
+    setSelectedColorName('Yellow');
     setPendingPosition(null);
     if (pendingHideTip) {
       pendingHideTip();
@@ -311,6 +435,29 @@ const AnalysisPage: React.FC<AnalysisPageProps> = () => {
       });
     } catch (err) {
       console.error('Failed to delete annotation', err);
+    }
+  };
+
+  const handleUpdateAnnotationStyle = async (id: string, color?: string, style?: string) => {
+    const updated = annotations.map(ann => {
+      if (ann.id === id) {
+        return {
+          ...ann,
+          highlightColor: color ?? ann.highlightColor,
+          highlightStyle: style ?? ann.highlightStyle
+        };
+      }
+      return ann;
+    });
+    setAnnotations(updated);
+    try {
+      await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8081'}/api/v1/analyses/${analysisId}/annotations`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ annotations: updated })
+      });
+    } catch (err) {
+      console.error('Failed to update annotation style', err);
     }
   };
 
@@ -421,21 +568,56 @@ const AnalysisPage: React.FC<AnalysisPageProps> = () => {
                   return (
                     <SafePdfHighlighter
                       pdfDocument={pdfDocument}
+                      pdfScaleValue={pdfScale}
                       enableAreaSelection={(event: any) => event.altKey}
                       onScrollChange={() => {}}
                       utilsRef={(utils: any) => {
-                        scrollViewerTo.current = utils.scrollTo;
+                        highlighterUtilsRef.current = utils;
+                        scrollViewerTo.current = utils.scrollToHighlight;
                       }}
-                      onSelection={(selection: any) => {
-                        handleSelectionFinished(selection);
-                      }}
+                      onSelection={() => {}}
+                      selectionTip={
+                        <SelectionTip
+                          onAnnotate={handleAnnotate}
+                          onChat={handleChat}
+                          utilsRef={highlighterUtilsRef}
+                        />
+                      }
                       highlights={annotations.filter(ann => ann.position)}
                     >
-                      <HighlightComponent />
+                      <HighlightComponent 
+                        onStyleChange={handleUpdateAnnotationStyle}
+                        onDelete={handleDeleteAnnotation}
+                      />
                     </SafePdfHighlighter>
                   );
                 }}
               </SafePdfLoader>
+            </div>
+            
+            {/* Floating Zoom Controls */}
+            <div className="absolute bottom-6 right-6 z-30 flex items-center bg-slate-900/95 backdrop-blur-md text-white px-3 py-1.5 rounded-xl shadow-soft-lg border border-slate-800 space-x-3 text-xs font-bold">
+              <button
+                type="button"
+                onClick={() => setPdfScale(prev => Math.max(0.5, prev - 0.1))}
+                className="hover:bg-slate-800 p-1.5 rounded-lg transition-colors focus-ring text-slate-300 hover:text-white"
+                title="Zoom Out"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M20 12H4" />
+                </svg>
+              </button>
+              <span className="min-w-[45px] text-center select-none font-mono">{Math.round(pdfScale * 100)}%</span>
+              <button
+                type="button"
+                onClick={() => setPdfScale(prev => Math.min(3.0, prev + 0.1))}
+                className="hover:bg-slate-800 p-1.5 rounded-lg transition-colors focus-ring text-slate-300 hover:text-white"
+                title="Zoom In"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+                </svg>
+              </button>
             </div>
           </div>
         )}
@@ -520,6 +702,57 @@ const AnalysisPage: React.FC<AnalysisPageProps> = () => {
                       />
                     </div>
                   </div>
+                  
+                  {/* Style & Color Selector */}
+                  <div className="grid grid-cols-6 gap-6">
+                    <div className="col-span-3">
+                      <span className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Style Type</span>
+                      <div className="flex bg-slate-200/50 p-1 rounded-xl border border-slate-200/30">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedStyle('highlight')}
+                          className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all focus-ring ${
+                            selectedStyle === 'highlight'
+                              ? 'bg-white text-slate-900 shadow-sm border border-slate-200/10'
+                              : 'text-slate-500 hover:text-slate-750'
+                          }`}
+                        >
+                          🖊️ Highlight
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedStyle('underline')}
+                          className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all focus-ring ${
+                            selectedStyle === 'underline'
+                              ? 'bg-white text-slate-900 shadow-sm border border-slate-200/10'
+                              : 'text-slate-500 hover:text-slate-750'
+                          }`}
+                        >
+                          ⎯ Underline
+                        </button>
+                      </div>
+                    </div>
+                    <div className="col-span-3">
+                      <span className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Color Preset</span>
+                      <div className="flex items-center space-x-2.5 h-[42px]">
+                        {COLOR_PRESETS.map((preset) => (
+                          <button
+                            key={preset.name}
+                            type="button"
+                            onClick={() => setSelectedColorName(preset.name)}
+                            title={preset.name}
+                            className={`w-6 h-6 rounded-full border-2 transition-all hover:scale-110 focus-ring ${
+                              selectedColorName === preset.name
+                                ? 'border-slate-800 shadow-sm scale-110'
+                                : 'border-transparent'
+                            }`}
+                            style={{ backgroundColor: preset.solid }}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
                   <div>
                     <label htmlFor="note-text" className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Personal Insight</label>
                     <textarea
@@ -552,9 +785,11 @@ const AnalysisPage: React.FC<AnalysisPageProps> = () => {
                         onClick={() => {
                           if (ann.position && scrollViewerTo.current) {
                             scrollViewerTo.current(ann);
+                          } else if (ann.page && highlighterUtilsRef.current) {
+                            highlighterUtilsRef.current.goToPage(ann.page);
                           }
                         }}
-                        className={`bg-white border border-slate-100 rounded-2xl p-6 shadow-soft relative group hover:border-primary-200 transition-colors ${ann.position ? 'cursor-pointer border-l-4 border-l-primary-500' : ''}`}
+                        className="bg-white border border-slate-100 rounded-2xl p-6 shadow-soft relative group hover:border-primary-200 transition-colors cursor-pointer border-l-4 border-l-primary-500"
                       >
                         <button
                           onClick={(e) => {
@@ -572,6 +807,24 @@ const AnalysisPage: React.FC<AnalysisPageProps> = () => {
                           <span className="text-[10px] font-bold px-2 py-1 rounded-md bg-primary-50 text-primary-700 uppercase">Page {ann.page}</span>
                           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{new Date(ann.created_at).toLocaleDateString()}</span>
                           {ann.position && <span className="text-[10px] font-bold text-primary-500 uppercase tracking-widest">📝 PDF Link</span>}
+                          {ann.highlightStyle && (
+                            <span 
+                              className="text-[10px] font-bold px-2 py-1 rounded-md uppercase"
+                              style={{ 
+                                backgroundColor: ann.highlightStyle === 'highlight' 
+                                  ? (ann.highlightColor ? ann.highlightColor.replace('0.35', '0.15').replace('0.3', '0.15') : 'rgba(250, 204, 21, 0.15)') 
+                                  : 'rgba(241, 245, 249, 0.7)',
+                                color: ann.highlightStyle === 'highlight' 
+                                  ? '#1e293b' 
+                                  : (ann.highlightColor || '#ef4444'),
+                                border: ann.highlightStyle === 'underline' 
+                                  ? `1px solid ${ann.highlightColor || '#ef4444'}` 
+                                  : 'none'
+                              }}
+                            >
+                              {ann.highlightStyle === 'highlight' ? '🖊️ Highlight' : '⎯ Underline'}
+                            </span>
+                          )}
                         </div>
                         <blockquote className="border-l-4 border-slate-200 pl-4 italic text-sm text-slate-600 mb-4 py-1">
                           "{ann.text}"
@@ -598,6 +851,11 @@ const AnalysisPage: React.FC<AnalysisPageProps> = () => {
                             ? 'bg-primary-600 text-white rounded-br-none'
                             : 'bg-white text-slate-800 rounded-bl-none border border-slate-100'
                         }`}>
+                          {msg.contextText && (
+                            <div className="mb-2.5 p-2.5 bg-black/10 border-l-2 border-white/45 rounded-lg text-[11px] font-medium text-white/90 truncate italic">
+                              {msg.contextText}
+                            </div>
+                          )}
                           <p className="whitespace-pre-wrap leading-relaxed font-medium">{msg.content}</p>
                           {msg.sources && msg.sources.length > 0 && (
                             <div className="mt-4 pt-3 border-t border-slate-100/20 flex flex-wrap items-center gap-2">
@@ -643,17 +901,38 @@ const AnalysisPage: React.FC<AnalysisPageProps> = () => {
                       e.preventDefault();
                       handleSendChatMessage();
                     }}
-                    className="p-4 bg-white border-t border-slate-100 flex items-center space-x-3"
+                    className="p-4 bg-white border-t border-slate-100 flex flex-col space-y-3"
                   >
-                    <input
-                      type="text"
-                      placeholder={analysisStatus === 'processing' || analysisStatus === 'queued' ? "Chat will be available once analysis is complete..." : "Ask the AI about this paper..."}
-                      value={chatInput}
-                      onChange={(e) => setChatInput(e.target.value)}
-                      disabled={isChatLoading || analysisStatus === 'processing' || analysisStatus === 'queued'}
-                      className="flex-1 border border-slate-200 rounded-xl px-5 py-3 text-sm focus-ring bg-slate-50 text-slate-800 placeholder-slate-400 disabled:opacity-50 font-medium"
-                      aria-label="Chat input"
-                    />
+                    {/* Selected Context Attachment */}
+                    {chatContext && (
+                      <div className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-600 animate-fade-in shadow-sm">
+                        <div className="flex items-center space-x-2 truncate">
+                          <span className="shrink-0 font-bold px-1.5 py-0.5 bg-slate-200/70 text-slate-700 rounded-md">Page {chatContext.page}</span>
+                          <span className="truncate italic font-medium">"{chatContext.text}"</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setChatContext(null)}
+                          className="text-slate-400 hover:text-slate-600 ml-2 focus-ring rounded-full p-0.5 hover:bg-slate-200/50 transition-colors"
+                          title="Remove context"
+                        >
+                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+                    )}
+
+                    <div className="flex items-center space-x-3">
+                      <input
+                        type="text"
+                        placeholder={analysisStatus === 'processing' || analysisStatus === 'queued' ? "Chat will be available once analysis is complete..." : "Ask the AI about this paper..."}
+                        value={chatInput}
+                        onChange={(e) => setChatInput(e.target.value)}
+                        disabled={isChatLoading || analysisStatus === 'processing' || analysisStatus === 'queued'}
+                        className="flex-1 border border-slate-200 rounded-xl px-5 py-3 text-sm focus-ring bg-slate-50 text-slate-800 placeholder-slate-400 disabled:opacity-50 font-medium"
+                        aria-label="Chat input"
+                      />
                     <button
                       type="submit"
                       disabled={isChatLoading || !chatInput.trim() || analysisStatus === 'processing' || analysisStatus === 'queued'}
@@ -664,6 +943,7 @@ const AnalysisPage: React.FC<AnalysisPageProps> = () => {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M14 5l7 7m0 0l-7 7m7-7H3" />
                       </svg>
                     </button>
+                    </div>
                   </form>
                 </div>
               </div>

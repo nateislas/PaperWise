@@ -235,6 +235,8 @@ class AnnotationItem(BaseModel):
     position: Optional[dict] = None
     content: Optional[dict] = None
     comment: Optional[dict] = None
+    highlightColor: Optional[str] = None
+    highlightStyle: Optional[str] = None
 
 
 class AnnotationsRequest(BaseModel):
