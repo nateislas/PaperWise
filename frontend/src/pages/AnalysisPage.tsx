@@ -99,19 +99,18 @@ const AnalysisPage: React.FC<AnalysisPageProps> = () => {
     return () => clearInterval(timer);
   }, []);
 
-  const handleSelectionFinished = (
-    position: any,
-    content: { text?: string; image?: string },
-    hideTipAndSelection: () => void
-  ) => {
+  const handleSelectionFinished = (selection: any) => {
+    if (!selection) return;
     setActiveTab('annotations');
     setNewAnnotation({
-      page: position.pageNumber || 1,
-      text: content.text || '',
+      page: selection.position?.pageNumber || 1,
+      text: selection.content?.text || '',
       note: ''
     });
-    setPendingPosition(position);
-    setPendingHideTip(() => hideTipAndSelection);
+    setPendingPosition(selection.position);
+    setPendingHideTip(() => () => {
+      window.getSelection()?.removeAllRanges();
+    });
   };
 
   const fetchAnnotations = useCallback(async () => {
@@ -427,8 +426,8 @@ const AnalysisPage: React.FC<AnalysisPageProps> = () => {
                       utilsRef={(utils: any) => {
                         scrollViewerTo.current = utils.scrollTo;
                       }}
-                      onSelection={(position: any, content: any, hideTipAndSelection: any) => {
-                        handleSelectionFinished(position, content, hideTipAndSelection);
+                      onSelection={(selection: any) => {
+                        handleSelectionFinished(selection);
                       }}
                       highlights={annotations.filter(ann => ann.position)}
                     >
