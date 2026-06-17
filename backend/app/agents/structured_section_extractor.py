@@ -69,7 +69,7 @@ class StructuredSectionExtractor(BaseAgent):
         ]
 
         content = ""
-        async for chunk in self._call_llama_stream(messages):
+        async for chunk in self._call_llm_stream(messages):
             content += chunk
 
         try:

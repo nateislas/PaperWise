@@ -164,7 +164,7 @@ const StreamingAnalysisResults: React.FC<StreamingAnalysisResultsProps> = ({
 
     try {
       // Always use the full backend URL for streaming to ensure it works
-      const streamUrl = `${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/api/v1/analyze/stream`;
+      const streamUrl = `${process.env.REACT_APP_API_URL || 'http://localhost:8081'}/api/v1/analyze/stream`;
         
       const response = await fetch(streamUrl, {
         method: 'POST',

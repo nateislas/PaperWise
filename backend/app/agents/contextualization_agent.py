@@ -3,10 +3,11 @@ from langchain.schema import Document
 from langchain.schema import HumanMessage, SystemMessage
 import logging
 
-from app.agents.base_agent import BaseAgent
+from app.agents.base_agent import BaseAgent, agent
 
 logger = logging.getLogger(__name__)
 
+@agent(name="ContextualizationAgent")
 class ContextualizationAgent(BaseAgent):
     """
     Agent specialized in contextualizing research within the broader field and literature
@@ -95,9 +96,9 @@ Provide a structured analysis with clear sections and actionable insights. Be sp
         """
         
         try:
-            # Get analysis from Llama
+            # Get analysis from Gemini
             messages = self._create_messages(analysis_prompt, query)
-            analysis = self._call_llama(messages)
+            analysis = self._call_llm(messages)
             
             # Log the analysis
             self.log_analysis(len(documents), len(analysis))
@@ -138,7 +139,7 @@ Provide a structured analysis with clear sections and actionable insights. Be sp
         
         try:
             messages = self._create_messages(novelty_prompt)
-            response = self._call_llama(messages)
+            response = self._call_llm(messages)
             
             return {
                 "novelty_assessment": response,
@@ -179,7 +180,7 @@ Provide a structured analysis with clear sections and actionable insights. Be sp
         
         try:
             messages = self._create_messages(gaps_prompt)
-            response = self._call_llama(messages)
+            response = self._call_llm(messages)
             
             return {
                 "research_gaps": response,
@@ -221,7 +222,7 @@ Provide a structured analysis with clear sections and actionable insights. Be sp
         
         try:
             messages = self._create_messages(impact_prompt)
-            response = self._call_llama(messages)
+            response = self._call_llm(messages)
             
             return {
                 "field_impact": response,
@@ -262,7 +263,7 @@ Provide a structured analysis with clear sections and actionable insights. Be sp
         
         try:
             messages = self._create_messages(related_prompt)
-            response = self._call_llama(messages)
+            response = self._call_llm(messages)
             
             return {
                 "related_work": response,
@@ -304,7 +305,7 @@ Provide a structured analysis with clear sections and actionable insights. Be sp
         
         try:
             messages = self._create_messages(future_prompt)
-            response = self._call_llama(messages)
+            response = self._call_llm(messages)
             
             return {
                 "future_directions": response,

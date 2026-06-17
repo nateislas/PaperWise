@@ -10,6 +10,21 @@ import concurrent.futures
 
 from app.config import settings
 
+# No-op decorators (AgentOps removed)
+def agent(name=None):
+    def decorator(cls):
+        return cls
+    return decorator
+
+def operation(func):
+    return func
+
+def tool(name=None, cost=None):
+    def decorator(func):
+        return func
+    return decorator
+
+
 logger = logging.getLogger(__name__)
 
 class BaseAgent(ABC):
@@ -21,10 +36,10 @@ class BaseAgent(ABC):
         self.name = name
         self.description = description
         
-        # Initialize Llama client with performance optimizations
-        self.llama_client = OpenAI(
-            api_key=settings.llama_api_key,
-            base_url=settings.llama_base_url,
+        # Initialize LLM client (OpenAI-compatible API — currently Gemini)
+        self.llm_client = OpenAI(
+            api_key=settings.gemini_api_key,
+            base_url=settings.gemini_base_url,
             timeout=settings.request_timeout,
             max_retries=2,
         )
@@ -37,10 +52,12 @@ class BaseAgent(ABC):
         pass
     
     @abstractmethod
+    @operation
     def analyze(self, documents: List[Document], query: Optional[str] = None) -> Dict[str, Any]:
         """Main analysis method to be implemented by each agent"""
         pass
     
+    @operation
     async def analyze_stream(self, documents: List[Document], query: Optional[str] = None) -> AsyncGenerator[str, None]:
         """Streaming analysis method for real-time responses"""
         logger.info(f"🎯 {self.name}: Starting streaming analysis")
@@ -55,7 +72,7 @@ class BaseAgent(ABC):
             logger.info(f"💬 {self.name}: Created {len(messages)} messages")
             
             chunk_count = 0
-            async for chunk in self._call_llama_stream(messages):
+            async for chunk in self._call_llm_stream(messages):
                 chunk_count += 1
                 yield chunk
                 
@@ -94,7 +111,7 @@ class BaseAgent(ABC):
         return combined_content
     
     def _create_messages(self, content: str, query: Optional[str] = None) -> List[Dict[str, str]]:
-        """Create messages for the Llama API"""
+        """Create messages for the LLM API"""
         messages = [{"role": "system", "content": self.system_prompt}]
         
         if query:
@@ -104,15 +121,16 @@ class BaseAgent(ABC):
         
         return messages
     
-    def _call_llama(self, messages: List[Dict[str, str]]) -> str:
-        """Synchronous call to Llama API"""
+    @tool(name="LLMCall", cost=0.01)
+    def _call_llm(self, messages: List[Dict[str, str]]) -> str:
+        """Synchronous call to the configured LLM"""
         start_time = time.time()
         
         try:
-            response = self.llama_client.chat.completions.create(
-                model=settings.llama_model,
+            response = self.llm_client.chat.completions.create(
+                model=settings.gemini_model,
                 messages=messages,
-                temperature=settings.llama_temperature,
+                temperature=settings.gemini_temperature,
                 max_tokens=settings.max_tokens_per_request,
                 timeout=settings.request_timeout
             )
@@ -122,11 +140,12 @@ class BaseAgent(ABC):
             
             return response.choices[0].message.content
         except Exception as e:
-            logger.error(f"Error calling Llama API for {self.name}: {str(e)}")
+            logger.error(f"Error calling LLM for {self.name}: {str(e)}")
             raise e
     
-    async def _call_llama_stream(self, messages: List[Dict[str, str]]) -> AsyncGenerator[str, None]:
-        """Streaming call to Llama API"""
+    @tool(name="LLMStream", cost=0.01)
+    async def _call_llm_stream(self, messages: List[Dict[str, str]]) -> AsyncGenerator[str, None]:
+        """Streaming call to the configured LLM"""
         start_time = time.time()
         chunk_count = 0
         
@@ -135,10 +154,10 @@ class BaseAgent(ABC):
         try:
             # Make the API call in a thread to avoid blocking the event loop
             response = await asyncio.to_thread(
-                self.llama_client.chat.completions.create,
-                model=settings.llama_model,
+                self.llm_client.chat.completions.create,
+                model=settings.gemini_model,
                 messages=messages,
-                temperature=settings.llama_temperature,
+                temperature=settings.gemini_temperature,
                 max_tokens=settings.max_tokens_per_request,
                 timeout=settings.request_timeout,
                 stream=True
@@ -168,7 +187,7 @@ class BaseAgent(ABC):
             logger.info(f"✅ {self.name} streaming API call completed in {elapsed_time:.2f}s with {chunk_count} chunks")
             
         except Exception as e:
-            logger.error(f"❌ Error in streaming Llama API call for {self.name}: {str(e)}")
+            logger.error(f"❌ Error in streaming LLM call for {self.name}: {str(e)}")
             logger.error(f"❌ Exception type: {type(e).__name__}")
             import traceback
             logger.error(f"❌ Traceback: {traceback.format_exc()}")

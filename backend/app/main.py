@@ -6,9 +6,11 @@ import os
 from typing import Optional
 import aiofiles
 import uuid
+import logging
 
-from app.routers import analysis, analyses
 from app.config import settings
+
+from app.routers import analysis, analyses, chat, local_papers
 
 app = FastAPI(
     title="PaperWise API",
@@ -29,6 +31,8 @@ app.add_middleware(
 # Include routers
 app.include_router(analysis.router, prefix="/api/v1")
 app.include_router(analyses.router, prefix="/api/v1")
+app.include_router(chat.router, prefix="/api/v1")
+app.include_router(local_papers.router, prefix="/api/v1")
 
 # Serve uploaded files (including extracted figure images)
 app.mount(

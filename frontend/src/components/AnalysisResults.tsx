@@ -7,7 +7,6 @@ import {
   Lightbulb, 
   AlertTriangle,
   CheckCircle,
-  Clock,
   Users,
   Zap,
   Menu,
@@ -58,7 +57,6 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({ analysis, isLoading }
   const subfield: string | undefined = analysis.subfield || comprehensive_analysis.subfield;
   const conferences: string[] | undefined = analysis.conferences || comprehensive_analysis.conferences;
   const fieldConfidence: number | undefined = analysis.field_confidence || comprehensive_analysis.field_confidence;
-  const figureAssets: Array<{ page: number; image_index: number; url: string; captions?: string[] }> = analysis.figures || comprehensive_analysis.figures || [];
   
   // Add defensive checks to prevent destructuring errors
   if (!comprehensive_analysis || typeof comprehensive_analysis !== 'object') {

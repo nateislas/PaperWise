@@ -58,7 +58,7 @@ class PaperWiseOptions {
       const apiUrlInput = document.getElementById('apiUrl');
       const autoOpenInput = document.getElementById('autoOpenResults');
 
-      apiUrlInput.value = result.apiUrl || 'http://localhost:8000/api/v1';
+      apiUrlInput.value = result.apiUrl || 'http://localhost:8081/api/v1';
       autoOpenInput.checked = result.autoOpenResults || false;
 
     } catch (error) {

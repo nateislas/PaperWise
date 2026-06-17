@@ -5,12 +5,13 @@ import json
 import time
 import asyncio
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.config import settings
 from app.agents.orchestrator_agent import OrchestratorAgent
 from app.job_state import set_state, publish_update
 from app.analysis_manager import analysis_manager
+
 
 logger = logging.getLogger(__name__)
 
@@ -100,7 +101,7 @@ def analyze_job(self, job: Dict[str, Any]) -> Dict[str, Any]:
         metadata = analysis_manager.get_analysis_metadata(analysis_id)
         if metadata:
             metadata["analysis_info"]["status"] = "completed"
-            metadata["analysis_info"]["completed_at"] = datetime.utcnow().isoformat()
+            metadata["analysis_info"]["completed_at"] = datetime.now(timezone.utc).isoformat()
             
             # Add logging to debug the result structure
             logger.info(f"🔍 Worker result keys: {list(result.keys())}")
@@ -133,18 +134,33 @@ def analyze_job(self, job: Dict[str, Any]) -> Dict[str, Any]:
                     logger.warning("🔍 Extracted paper_info is empty or None")
             else:
                 logger.warning("🔍 No paper_info found in comprehensive_analysis")
-            
+            # Pre-submit document to PageIndex if API key is present
+            if settings.pageindex_api_key:
+                try:
+                    logger.info(f"🚀 Pre-submitting paper to PageIndex in background: {file_path}")
+                    from pageindex import PageIndexClient
+                    pi_client = PageIndexClient(api_key=settings.pageindex_api_key)
+                    pi_result = pi_client.submit_document(file_path)
+                    doc_id = pi_result.get("doc_id")
+                    if doc_id:
+                        metadata["pageindex_doc_id"] = doc_id
+                        logger.info(f"✅ PageIndex pre-submission successful. doc_id: {doc_id}")
+                except Exception as pageindex_error:
+                    logger.warning(f"⚠️ PageIndex background pre-submission failed: {pageindex_error}")
+
             analysis_manager.save_analysis_metadata(analysis_id, metadata)
 
         set_state(job["job_id"], state="done", stage="finalizing", progress=100)
         publish_update(job["job_id"], {"type": "done"})
         self.update_state(state="PROGRESS", meta={"stage": "finalizing", "progress": 95})
+        
         return {"analysis_id": analysis_id}
     except Exception as e:
         # Let Celery capture the exception type and message
         set_state(job.get("job_id", "unknown"), state="error", stage="failed", error=type(e).__name__)
         publish_update(job.get("job_id", "unknown"), {"type": "error", "error": type(e).__name__})
         self.update_state(state="FAILURE", meta={"error": type(e).__name__})
+        
         raise
 
 

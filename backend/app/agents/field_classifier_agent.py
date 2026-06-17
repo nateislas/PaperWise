@@ -1,11 +1,12 @@
 import logging
 from typing import Any, Dict, List, Optional
 
-from app.agents.base_agent import BaseAgent
+from app.agents.base_agent import BaseAgent, agent
 
 logger = logging.getLogger(__name__)
 
 
+@agent(name="FieldClassifierAgent")
 class FieldClassifierAgent(BaseAgent):
     """
     Lightweight field classifier that labels the paper's primary domain.
@@ -54,7 +55,7 @@ class FieldClassifierAgent(BaseAgent):
 
         try:
             content = ""
-            async for chunk in self._call_llama_stream(messages):
+            async for chunk in self._call_llm_stream(messages):
                 content += chunk
 
             # Best-effort JSON parsing; fallback to generic

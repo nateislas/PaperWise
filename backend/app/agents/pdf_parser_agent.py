@@ -5,13 +5,14 @@ import logging
 import os
 from datetime import datetime
 
-from app.agents.base_agent import BaseAgent
+from app.agents.base_agent import BaseAgent, agent
 import re
 from app.config import settings
 import pathlib
 
 logger = logging.getLogger(__name__)
 
+@agent(name="PDFParserAgent")
 class PDFParserAgent(BaseAgent):
     """
     Agent responsible for parsing PDF files and extracting text, tables, and figures
@@ -197,7 +198,7 @@ Rules:
 JSON:"""
             
             # Call LLM to extract metadata
-            response = self._call_llama([{"role": "user", "content": prompt}])
+            response = self._call_llm([{"role": "user", "content": prompt}])
             
             if not response:
                 return {"title": "Unknown", "author": "Unknown"}
@@ -387,22 +388,46 @@ JSON:"""
         """Create LangChain Document objects from the extracted text"""
         from app.config import settings
         
-        # Split text into chunks
-        chunks = self._split_text_into_chunks(text_content, settings.chunk_size, settings.chunk_overlap)
-        
         documents = []
-        for i, chunk in enumerate(chunks):
-            doc = Document(
-                page_content=chunk,
-                metadata={
-                    **metadata,
-                    "chunk_index": i,
-                    "chunk_size": len(chunk),
-                    "source": metadata.get("title", "Unknown")
-                }
-            )
-            documents.append(doc)
         
+        # Split text by page headers
+        pages = re.split(r'--- Page (\d+) ---\n', text_content)
+        
+        # The first element is anything before the first page marker (usually empty)
+        header_before = pages[0]
+        if header_before.strip():
+            chunks = self._split_text_into_chunks(header_before, settings.chunk_size, settings.chunk_overlap)
+            for i, chunk in enumerate(chunks):
+                doc = Document(
+                    page_content=chunk,
+                    metadata={
+                        **metadata,
+                        "page": 1,
+                        "chunk_index": len(documents),
+                        "chunk_size": len(chunk),
+                        "source": metadata.get("title", "Unknown")
+                    }
+                )
+                documents.append(doc)
+                
+        for idx in range(1, len(pages), 2):
+            page_num = int(pages[idx])
+            page_text = pages[idx + 1]
+            
+            chunks = self._split_text_into_chunks(page_text, settings.chunk_size, settings.chunk_overlap)
+            for i, chunk in enumerate(chunks):
+                doc = Document(
+                    page_content=chunk,
+                    metadata={
+                        **metadata,
+                        "page": page_num,
+                        "chunk_index": len(documents),
+                        "chunk_size": len(chunk),
+                        "source": metadata.get("title", "Unknown")
+                    }
+                )
+                documents.append(doc)
+                
         return documents
     
     def _split_text_into_chunks(self, text: str, chunk_size: int, chunk_overlap: int) -> List[str]:

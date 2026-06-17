@@ -3,10 +3,11 @@ from langchain.schema import Document
 from langchain.schema import HumanMessage, SystemMessage
 import logging
 
-from app.agents.base_agent import BaseAgent
+from app.agents.base_agent import BaseAgent, agent
 
 logger = logging.getLogger(__name__)
 
+@agent(name="MethodologyAgent")
 class MethodologyAgent(BaseAgent):
     """
     Agent specialized in analyzing research methodology, experimental design, and methods
@@ -93,9 +94,9 @@ Provide a structured analysis with clear sections and actionable insights. Be sp
         """
         
         try:
-            # Get analysis from Llama
+            # Get analysis from Gemini
             messages = self._create_messages(analysis_prompt, query)
-            analysis = self._call_llama(messages)
+            analysis = self._call_llm(messages)
             
             # Log the analysis
             self.log_analysis(len(documents), len(analysis))
@@ -136,7 +137,7 @@ Provide a structured analysis with clear sections and actionable insights. Be sp
         
         try:
             messages = self._create_messages(extraction_prompt)
-            response = self._call_llama(messages)
+            response = self._call_llm(messages)
             
             return {
                 "extracted_details": response,
@@ -177,7 +178,7 @@ Provide a structured analysis with clear sections and actionable insights. Be sp
         
         try:
             messages = self._create_messages(quality_prompt)
-            response = self._call_llama(messages)
+            response = self._call_llm(messages)
             
             return {
                 "quality_assessment": response,
