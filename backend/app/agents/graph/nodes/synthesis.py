@@ -8,7 +8,18 @@ from app.agents.graph.prompts import SYNTHESIS_PROMPT
 logger = logging.getLogger(__name__)
 
 async def synthesis_node(state: PaperAnalysisState) -> Dict[str, Any]:
-    """Synthesizes expert analyses into a final structured report."""
+    """
+    Synthesizes expert analyses into a final structured report.
+    
+    Args:
+        state (PaperAnalysisState): The current graph state containing expert analysis strings.
+        
+    Returns:
+        Dict[str, Any]: A dictionary containing:
+            - final_report (AnalysisReport): The structured Pydantic report object (on success).
+            - status_updates (List[Dict[str, Any]]): Final status update (on success).
+            - errors (List[str]): Error message (on failure).
+    """
     logger.info("🧪 Node: Final Synthesis")
     
     llm = ChatGoogleGenerativeAI(
@@ -40,6 +51,8 @@ async def synthesis_node(state: PaperAnalysisState) -> Dict[str, Any]:
             }]
         }
     except Exception as e:
+        # Broad catch is justified to ensure any LLM failure in this terminal node
+        # is captured and reported without crashing the entire graph worker.
         logger.error(f"Synthesis failed: {e}")
         return {
             "errors": [f"Synthesis failed: {str(e)}"]

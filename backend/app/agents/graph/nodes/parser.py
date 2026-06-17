@@ -1,4 +1,5 @@
 import logging
+import asyncio
 from typing import Dict, Any, List
 from app.agents.pdf_parser_agent import PDFParserAgent
 from app.agents.graph.state import PaperAnalysisState
@@ -6,11 +7,24 @@ from app.agents.graph.state import PaperAnalysisState
 logger = logging.getLogger(__name__)
 
 async def parse_pdf_node(state: PaperAnalysisState) -> Dict[str, Any]:
-    """Parses the PDF file into document chunks."""
+    """
+    Parses the PDF file into document chunks.
+    
+    Args:
+        state (PaperAnalysisState): The current graph state containing 'file_path'.
+        
+    Returns:
+        Dict[str, Any]: A dictionary containing:
+            - documents (List[Document]): The extracted document chunks (on success).
+            - parsed_content (Dict[str, Any]): Detailed parsed content (on success).
+            - status_updates (List[Dict[str, Any]]): Status update for the UI.
+            - errors (List[str]): Error message (on failure).
+    """
     logger.info("📄 Node: Parsing PDF")
     
     parser = PDFParserAgent()
-    result = parser.parse_pdf(state["file_path"])
+    # Wrap sync call in to_thread to avoid blocking the event loop
+    result = await asyncio.to_thread(parser.parse_pdf, state["file_path"])
     
     if result["status"] == "error":
         return {

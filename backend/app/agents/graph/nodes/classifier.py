@@ -8,8 +8,28 @@ from app.agents.graph.prompts import FIELD_CLASSIFIER_PROMPT
 logger = logging.getLogger(__name__)
 
 async def field_classifier_node(state: PaperAnalysisState) -> Dict[str, Any]:
-    """Classifies the academic field of the paper."""
+    """
+    Classifies the academic field of the paper.
+    
+    Args:
+        state (PaperAnalysisState): The current graph state containing 'documents'.
+        
+    Returns:
+        Dict[str, Any]: A dictionary containing:
+            - detected_field (str): The primary field name.
+            - field_info (FieldClassification): Structured classification details (on success).
+            - status_updates (List[Dict[str, Any]]): Status update for the UI (on success).
+            - errors (List[str]): Error messages (on failure).
+    """
     logger.info("🔍 Node: Classifying Field")
+    
+    # Defensive check for documents
+    if not state.get("documents"):
+        logger.warning("No documents found in state for classification.")
+        return {
+            "detected_field": "generic",
+            "errors": ["No documents available for field classification."]
+        }
     
     llm = ChatGoogleGenerativeAI(
         model=settings.gemini_model,
@@ -36,6 +56,8 @@ async def field_classifier_node(state: PaperAnalysisState) -> Dict[str, Any]:
             }]
         }
     except Exception as e:
+        # Broad catch is justified here because any LLM or network error should be handled 
+        # gracefully by falling back to 'generic' and logging the error.
         logger.error(f"Field classification failed: {e}")
         return {
             "detected_field": "generic",

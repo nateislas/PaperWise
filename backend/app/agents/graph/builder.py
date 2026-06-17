@@ -1,12 +1,18 @@
 from langgraph.graph import StateGraph, START, END
+from langgraph.graph.state import CompiledGraph
 from app.agents.graph.state import PaperAnalysisState
 from app.agents.graph.nodes.parser import parse_pdf_node
 from app.agents.graph.nodes.classifier import field_classifier_node
 from app.agents.graph.nodes.experts import methodology_node, results_node, context_node
 from app.agents.graph.nodes.synthesis import synthesis_node
 
-def create_analysis_graph():
-    """Creates and compiles the Paper Analysis graph."""
+def create_analysis_graph() -> CompiledGraph:
+    """
+    Creates and compiles the Paper Analysis graph.
+    
+    Returns:
+        CompiledGraph: The compiled state graph object for paper analysis.
+    """
     
     # Initialize Graph
     builder = StateGraph(PaperAnalysisState)

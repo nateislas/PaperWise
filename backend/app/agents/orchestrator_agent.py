@@ -26,7 +26,14 @@ class OrchestratorAgent(BaseAgent):
     
     async def analyze_paper_stream(self, file_path: str, user_query: Optional[str] = None) -> AsyncGenerator[Dict[str, Any], None]:
         """
-        Stream analysis of a research paper with real-time updates using LangGraph
+        Stream analysis of a research paper with real-time updates using LangGraph.
+        
+        Args:
+            file_path (str): Path to the PDF file.
+            user_query (Optional[str]): Optional user query to guide analysis.
+            
+        Yields:
+            AsyncGenerator[Dict[str, Any], None]: A sequence of status, chunk, and completion events.
         """
         logger.info(f"🎯 ORCHESTRATOR (LANGGRAPH): Starting streaming analysis")
         
@@ -34,7 +41,7 @@ class OrchestratorAgent(BaseAgent):
         start_time = time.time()
         
         # Initial State
-        initial_state: PaperAnalysisState = {
+        full_state: PaperAnalysisState = {
             "file_path": file_path,
             "user_query": user_query,
             "parsed_content": {},
@@ -50,15 +57,19 @@ class OrchestratorAgent(BaseAgent):
         }
         
         try:
-            # We use astream_events or simple astream for graph updates
-            # For now, let's use astream to catch node completion state changes
-            async for event in analysis_graph.astream(initial_state, stream_mode="updates"):
-                # The event dictionary contains the key of the node that just finished
-                # and its returned state updates
+            # Single pass over graph execution to avoid double-processing and API costs
+            async for event in analysis_graph.astream(full_state, stream_mode="updates"):
                 for node_name, updates in event.items():
                     logger.info(f"📍 Node completed: {node_name}")
                     
-                    # Yield any status updates found in this chunk
+                    # Accumulate state locally to track progress for the final report
+                    for key, val in updates.items():
+                        if key in ["status_updates", "errors"]:
+                            full_state[key].extend(val)
+                        else:
+                            full_state[key] = val
+                    
+                    # Yield any status updates found in this chunk for real-time UI updates
                     if "status_updates" in updates:
                         for status in updates["status_updates"]:
                             yield {
@@ -66,95 +77,78 @@ class OrchestratorAgent(BaseAgent):
                                 **status
                             }
                     
-                    # Yield specific chunks for UI compatibility if needed
-                    # (Note: Current frontend expects token-by-token streaming for some parts,
-                    # but LangGraph nodes here are returning full strings. 
-                    # We can add fine-grained token streaming later if needed.)
-                    if node_name == "analyze_methodology":
+                    # Yield specific chunks for UI compatibility (backward compatibility)
+                    if node_name == "analyze_methodology" and "methodology_analysis" in updates:
                         yield {"type": "methodology_chunk", "analysis_id": analysis_id, "content": updates["methodology_analysis"], "progress": 50}
-                    elif node_name == "analyze_results":
+                    elif node_name == "analyze_results" and "results_analysis" in updates:
                         yield {"type": "results_chunk", "analysis_id": analysis_id, "content": updates["results_analysis"], "progress": 70}
-                    elif node_name == "analyze_context":
+                    elif node_name == "analyze_context" and "context_analysis" in updates:
                         yield {"type": "contextualization_chunk", "analysis_id": analysis_id, "content": updates["context_analysis"], "progress": 85}
 
-            # After graph completion, retrieve final state
-            final_state = await analysis_graph.aget_state(initial_state) # This isn't quite right for astream
-            # Actually, astream returns the updates, so we've been accumulating.
-            # Let's get the final full state to build the 'complete' message.
-            
-            # Wait, a better way to get final structured report:
-            # Let's just track the final_report in our loop.
-            
+            # Final validation: check if analysis succeeded or failed
+            if full_state.get("final_report"):
+                report_dict = full_state["final_report"].model_dump()
+                
+                # Add metadata for UI compatibility
+                final_output = {
+                    "analysis_id": analysis_id,
+                    "comprehensive_analysis": report_dict, 
+                    "metadata": {
+                        "analysis_timestamp": self._get_timestamp(),
+                        "analysis_confidence": 0.9,
+                        "model_used": "gemini-1.5-pro"
+                    },
+                    "field": full_state.get("detected_field"),
+                    "paper_info": full_state.get("parsed_content", {}).get("metadata", {})
+                }
+                
+                yield {
+                    "type": "complete",
+                    "analysis_id": analysis_id,
+                    "status": "success",
+                    "message": "Analysis completed successfully",
+                    "analysis": final_output,
+                    "progress": 100,
+                    "elapsed_time": time.time() - start_time
+                }
+            else:
+                # Synthesis failed or report is missing
+                error_msg = full_state["errors"][-1] if full_state["errors"] else "Analysis finished without generating a final report."
+                yield {
+                    "type": "error",
+                    "analysis_id": analysis_id,
+                    "status": "failed",
+                    "message": f"Synthesis failed: {error_msg}",
+                    "progress": 100,
+                    "elapsed_time": time.time() - start_time
+                }
+                
         except Exception as e:
-            logger.error(f"Error in LangGraph analysis: {str(e)}")
+            logger.error(f"Critical error in LangGraph analysis: {str(e)}")
             yield {
                 "type": "error",
                 "analysis_id": analysis_id,
                 "message": f"Analysis failed: {str(e)}"
             }
-            return
-
-        # Handle final report - since we don't have the final state object easily from astream updates,
-        # we'll run one final get_state if we needed it, but we can just use updates.
-        # Actually, let's just use a simple state accumulation or run the final synthesis logic here if needed.
-        # But wait, the graph ALREADY ran the synthesis node.
-        
-        # Let's re-run with a slightly different pattern to ensure we get the final report object.
-        # Re-fetching final report from the graph's internal result is cleaner.
-        
-        # [Refinement]: Let's use a simpler generator for the 'complete' message
-        # In a real implementation, we'd store the accumulated state.
-        
-        # Re-implementing the generator more robustly:
-        full_state = initial_state.copy()
-        async for event in analysis_graph.astream(initial_state, stream_mode="updates"):
-            for node_name, updates in event.items():
-                # Accumulate state locally
-                for key, val in updates.items():
-                    if key in ["status_updates", "errors"]:
-                        full_state[key].extend(val)
-                    else:
-                        full_state[key] = val
-                
-                # Yield updates to UI
-                if "status_updates" in updates:
-                    for status in updates["status_updates"]:
-                        yield {"analysis_id": analysis_id, **status}
-
-        # Send final result
-        if full_state.get("final_report"):
-            report_dict = full_state["final_report"].model_dump()
-            
-            # Add metadata for UI compatibility
-            final_output = {
-                "analysis_id": analysis_id,
-                "comprehensive_analysis": report_dict, # The UI expects the JSON here
-                "metadata": {
-                    "analysis_timestamp": self._get_timestamp(),
-                    "analysis_confidence": 0.9,
-                    "model_used": "gemini-1.5-pro"
-                },
-                "field": full_state.get("detected_field"),
-                "paper_info": full_state.get("parsed_content", {}).get("metadata", {})
-            }
-            
-            yield {
-                "type": "complete",
-                "analysis_id": analysis_id,
-                "status": "success",
-                "message": "Analysis completed successfully",
-                "analysis": final_output,
-                "progress": 100,
-                "elapsed_time": time.time() - start_time
-            }
     
     def analyze(self, documents: List[Any], query: Optional[str] = None) -> Dict[str, Any]:
+        """Required by BaseAgent interface; Orchestrator uses streaming API primarily."""
         return {"status": "ready"}
     
     async def analyze_paper(self, file_path: str, user_query: Optional[str] = None) -> Dict[str, Any]:
-        """Legacy sync method - rerouted to Graph"""
-        results = []
+        """
+        Legacy async method for backward compatibility.
+        
+        Args:
+            file_path (str): Path to PDF.
+            user_query (Optional[str]): Query string.
+            
+        Returns:
+            Dict[str, Any]: Final analysis result.
+        """
         async for update in self.analyze_paper_stream(file_path, user_query):
-            if update["type"] == "complete":
+            if update.get("type") == "complete":
+                return update
+            elif update.get("type") == "error":
                 return update
         return {"status": "error", "message": "Failed to complete analysis"}
