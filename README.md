@@ -12,12 +12,12 @@ PaperWise is an intelligent AI agent system that provides deep, critical analysi
 
 ## ✨ Features
 
-- **🔍 Deep Analysis**: Critical evaluation of methodology, results, and implications
-- **🤖 Multi-Agent System**: Specialized AI agents working collaboratively
-- **📊 Research-Focused**: Designed specifically for PhD students and PIs
-- **💬 Interactive Queries**: Ask specific questions about any aspect of the paper
-- **📋 Structured Output**: Clear, organized analysis with actionable insights
-- **📄 Multi-format Support**: Advanced PDF parsing with table and figure extraction
+- **🔍 Deep Analysis**: Critical evaluation of methodology, results, and implications using parallelized LangGraph agents.
+- **☁️ Managed RAG**: High-performance document understanding powered by LlamaCloud.
+- **📄 Agentic Parsing**: Superior PDF extraction with LlamaParse (Tables, Figures, OCR).
+- **🤖 Parallel Multi-Agent System**: Specialized AI nodes working collaboratively for 3x faster analysis.
+- **📊 Research-Focused**: Designed specifically for PhD students and PIs.
+- **💬 Knowledge Chat**: Interactive deep-dive chat with persistent memory and verified citations.
 
 ## 🎯 What PaperWise Analyzes
 
@@ -38,25 +38,21 @@ PaperWise helps researchers understand:
 
 ## 🏗️ Architecture
 
-### Frontend
-- **React 18** with TypeScript for type safety
-- **Tailwind CSS** for modern, responsive design
-- **Drag-and-drop** file upload interface
-- **Real-time** analysis progress tracking
-- **Markdown rendering** for rich analysis display
+### AI Agents & Orchestration
+- **LangGraph**: Directed Acyclic Graph orchestrator for complex, parallel analysis workflows.
+- **LlamaIndex/LlamaCloud**: Managed retrieval-augmented generation (RAG) for expert document chat.
+- **LlamaParse**: High-fidelity document parsing for high-fidelity technical extraction.
+- **Google Gemini 2.5 Flash**: SOTA multimodal intelligence for deep research reasoning.
 
 ### Backend
-- **FastAPI** for high-performance REST API
-- **Multi-agent system** using LangChain
-- **Google Gemini** for intelligent analysis
-- **Advanced PDF processing** with PyMuPDF
+- **FastAPI**: High-performance REST API with streaming support.
+- **Celery & Redis**: Robust asynchronous task processing for long-running analyses.
+- **PyMuPDF**: Secondary parsing and image asset extraction.
 
-### AI Agents
-- **📄 PDF Parser Agent**: Extracts text, tables, and figures
-- **🔬 Methodology Agent**: Analyzes experimental design and methods
-- **📊 Results Agent**: Interprets findings and statistical significance
-- **🌐 Contextualization Agent**: Compares with existing literature
-- **🎯 Orchestrator Agent**: Coordinates and synthesizes all analyses
+### Frontend
+- **React 18** with TypeScript.
+- **Tailwind CSS** for modern research UI.
+- **Real-time Streaming**: SSE for live agent status and progress updates.
 
 ## 🚀 Quick Start
 
