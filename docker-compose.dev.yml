@@ -1,0 +1,24 @@
+services:
+  backend:
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    volumes:
+      - ./backend:/app
+      - ./backend/uploads:/app/uploads
+      - ./backend/chroma_db:/app/chroma_db
+
+  worker:
+    volumes:
+      - ./backend:/app
+      - ./backend/uploads:/app/uploads
+      - ./backend/chroma_db:/app/chroma_db
+    # Worker automatically reloads when code changes as long as the volume is mapped
+
+  frontend:
+    command: ["npm", "start"]
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - REACT_APP_API_URL=http://localhost:8081
+      - CHOKIDAR_USEPOLLING=true
+      - WDS_SOCKET_PORT=3002

@@ -96,7 +96,21 @@ npm start
 ```
 
 ### 4. Open Your Browser
-Navigate to [http://localhost:3000](http://localhost:3000)
+Navigate to [http://localhost:3000](http://localhost:3000) (or [http://localhost:3002](http://localhost:3002) if using Docker)
+
+## 🐳 Docker Development
+
+For a "Live Coding" experience where changes are detected automatically:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+```
+
+This will:
+- Map your local `backend/` and `frontend/` folders into the containers.
+- Enable `uvicorn --reload` for the backend.
+- Enable `npm start` (HMR) for the frontend.
+- Use polling to ensure file changes are detected across all operating systems.
 
 ## 🛠️ Tech Stack
 
