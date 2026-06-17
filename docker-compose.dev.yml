@@ -1,5 +1,6 @@
 services:
   backend:
+    container_name: paperwise-backend-dev
     command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
     volumes:
       - ./backend:/app
@@ -7,6 +8,7 @@ services:
       - ./backend/chroma_db:/app/chroma_db
 
   worker:
+    container_name: paperwise-worker-dev
     volumes:
       - ./backend:/app
       - ./backend/uploads:/app/uploads
@@ -14,6 +16,7 @@ services:
     # Worker automatically reloads when code changes as long as the volume is mapped
 
   frontend:
+    container_name: paperwise-frontend-dev
     build:
       context: ./frontend
       dockerfile: Dockerfile

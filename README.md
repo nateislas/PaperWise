@@ -100,17 +100,23 @@ Navigate to [http://localhost:3000](http://localhost:3000) (or [http://localhost
 
 ## 🐳 Docker Development
 
-For a "Live Coding" experience where changes are detected automatically:
+For a "Live Coding" experience where changes are detected automatically (Hot-Reloading):
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+./dev.sh
 ```
 
-This will:
+This script is a shortcut for:
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
+```
+
+It will:
 - Map your local `backend/` and `frontend/` folders into the containers.
 - Enable `uvicorn --reload` for the backend.
 - Enable `npm start` (HMR) for the frontend.
 - Use polling to ensure file changes are detected across all operating systems.
+- Expose the frontend at [http://localhost:3002](http://localhost:3002) and backend at [http://localhost:8081](http://localhost:8081).
 
 ## 🛠️ Tech Stack
 
