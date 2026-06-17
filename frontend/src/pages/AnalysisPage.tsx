@@ -1,8 +1,24 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import AnalysisResults from '../components/AnalysisResults';
 import StreamingAnalysisResults from '../components/StreamingAnalysisResults';
 import { repairTruncatedJson } from '../utils/jsonRepair';
+import {
+  PdfLoader,
+  PdfHighlighter,
+  TextHighlight,
+  AreaHighlight
+} from 'react-pdf-highlighter-plus';
+import 'react-pdf-highlighter-plus/style/style.css';
+import * as pdfjs from 'pdfjs-dist';
+
+// Explicitly set the PDF.js worker to load from the unpkg CDN to prevent .mjs load failures in Docker/development
+pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
+
+const SafePdfLoader = PdfLoader as any;
+const SafePdfHighlighter = PdfHighlighter as any;
+const SafeTextHighlight = TextHighlight as any;
+const SafeAreaHighlight = AreaHighlight as any;
 
 interface AnalysisPageProps {}
 
@@ -23,6 +39,26 @@ const AnalysisPage: React.FC<AnalysisPageProps> = () => {
   const [chatInput, setChatInput] = useState('');
   const [isChatLoading, setIsChatLoading] = useState(false);
   const [showPdf, setShowPdf] = useState<boolean>(true);
+
+  // Native PDF highlights states & refs
+  const [pendingPosition, setPendingPosition] = useState<any | null>(null);
+  const [pendingHideTip, setPendingHideTip] = useState<(() => void) | null>(null);
+  const scrollViewerTo = useRef<((highlight: any) => void) | null>(null);
+
+  const handleSelectionFinished = (
+    position: any,
+    content: { text?: string; image?: string },
+    hideTipAndSelection: () => void
+  ) => {
+    setActiveTab('annotations');
+    setNewAnnotation({
+      page: position.pageNumber || 1,
+      text: content.text || '',
+      note: ''
+    });
+    setPendingPosition(position);
+    setPendingHideTip(() => hideTipAndSelection);
+  };
 
   const fetchAnnotations = useCallback(async () => {
     try {
@@ -178,16 +214,27 @@ const AnalysisPage: React.FC<AnalysisPageProps> = () => {
   const handleAddAnnotation = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newAnnotation.text.trim()) return;
-    const item = {
+    
+    const item: any = {
       id: Math.random().toString(36).substr(2, 9),
       page: newAnnotation.page,
       text: newAnnotation.text,
-      note: newAnnotation.note,
-      created_at: new Date().toISOString()
+      note: newAnnotation.note || '',
+      created_at: new Date().toISOString(),
+      // Add position and content if we have a pending highlight selection
+      position: pendingPosition || undefined,
+      content: pendingPosition ? { text: newAnnotation.text } : undefined,
+      comment: { text: newAnnotation.note || '' }
     };
+    
     const updated = [...annotations, item];
     setAnnotations(updated);
-    setNewAnnotation({ page: newAnnotation.page, text: '', note: '' });
+    setNewAnnotation({ page: 1, text: '', note: '' });
+    setPendingPosition(null);
+    if (pendingHideTip) {
+      pendingHideTip();
+      setPendingHideTip(null);
+    }
 
     try {
       await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8081'}/api/v1/analyses/${analysisId}/annotations`, {
@@ -305,12 +352,48 @@ const AnalysisPage: React.FC<AnalysisPageProps> = () => {
         {/* Left Side: PDF Viewer */}
         {showPdf && (
           <div className="w-1/2 h-full border-r border-slate-200 bg-slate-100/50 p-4">
-            <div className="w-full h-full bg-white rounded-2xl shadow-soft overflow-hidden border border-slate-200">
-              <iframe
-                src={pdfUrl}
-                className="w-full h-full"
-                title="Academic Paper Viewer"
-              />
+            <div className="w-full h-full bg-white rounded-2xl shadow-soft overflow-hidden border border-slate-200 relative">
+              <SafePdfLoader url={pdfUrl} beforeLoad={<div className="flex items-center justify-center h-full"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-600"></div><p className="ml-3 text-slate-500 font-medium">Loading document...</p></div>}>
+                {(pdfDocument: any) => (
+                  <SafePdfHighlighter
+                    pdfDocument={pdfDocument}
+                    enableAreaSelection={(event: any) => event.altKey}
+                    onScrollChange={() => {}}
+                    scrollRef={(scrollTo: any) => {
+                      scrollViewerTo.current = scrollTo;
+                    }}
+                    onSelectionFinished={(position: any, content: any, hideTipAndSelection: any) => {
+                      handleSelectionFinished(position, content, hideTipAndSelection);
+                    }}
+                    highlightTransform={(
+                      highlight: any,
+                      index: number,
+                      setTip: any,
+                      hideTip: any,
+                      viewportToScaled: any,
+                      screenshot: any,
+                      isScrolledTo: boolean
+                    ) => {
+                      const isAreaHighlight = !highlight.position.rects || highlight.position.rects.length === 0;
+
+                      return isAreaHighlight ? (
+                        <SafeAreaHighlight
+                          highlight={highlight}
+                          onChange={(rect: any) => {}}
+                        />
+                      ) : (
+                        <SafeTextHighlight
+                          highlight={highlight}
+                          onClick={() => {
+                            setActiveTab('annotations');
+                          }}
+                        />
+                      );
+                    }}
+                    highlights={annotations.filter(ann => ann.position)}
+                  />
+                )}
+              </SafePdfLoader>
             </div>
           </div>
         )}
@@ -418,13 +501,24 @@ const AnalysisPage: React.FC<AnalysisPageProps> = () => {
                 <div className="space-y-4">
                   {annotations.length === 0 ? (
                     <div className="text-center py-20 bg-slate-50 rounded-3xl border border-dashed border-slate-200">
-                      <p className="text-sm font-medium text-slate-400">No notes yet. Be the first to annotate this paper!</p>
+                      <p className="text-sm font-medium text-slate-400">No notes yet. Select text in the document or type below to annotate!</p>
                     </div>
                   ) : (
                     annotations.map(ann => (
-                      <div key={ann.id} className="bg-white border border-slate-100 rounded-2xl p-6 shadow-soft relative group hover:border-primary-200 transition-colors">
+                      <div 
+                        key={ann.id} 
+                        onClick={() => {
+                          if (ann.position && scrollViewerTo.current) {
+                            scrollViewerTo.current(ann);
+                          }
+                        }}
+                        className={`bg-white border border-slate-100 rounded-2xl p-6 shadow-soft relative group hover:border-primary-200 transition-colors ${ann.position ? 'cursor-pointer border-l-4 border-l-primary-500' : ''}`}
+                      >
                         <button
-                          onClick={() => handleDeleteAnnotation(ann.id)}
+                          onClick={(e) => {
+                            e.stopPropagation(); // Prevent trigger scrolling
+                            handleDeleteAnnotation(ann.id);
+                          }}
                           className="absolute top-4 right-4 text-slate-300 hover:text-rose-600 transition-colors hidden group-hover:block"
                           aria-label="Delete annotation"
                         >
@@ -435,6 +529,7 @@ const AnalysisPage: React.FC<AnalysisPageProps> = () => {
                         <div className="flex items-center space-x-3 mb-4">
                           <span className="text-[10px] font-bold px-2 py-1 rounded-md bg-primary-50 text-primary-700 uppercase">Page {ann.page}</span>
                           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{new Date(ann.created_at).toLocaleDateString()}</span>
+                          {ann.position && <span className="text-[10px] font-bold text-primary-500 uppercase tracking-widest">📝 PDF Link</span>}
                         </div>
                         <blockquote className="border-l-4 border-slate-200 pl-4 italic text-sm text-slate-600 mb-4 py-1">
                           "{ann.text}"

@@ -108,7 +108,8 @@ async def download_paper(analysis_id: str = Path(..., description="Analysis ID")
         return FileResponse(
             paper_path,
             media_type="application/pdf",
-            filename=filename
+            filename=filename,
+            content_disposition_type="inline"
         )
     except HTTPException:
         raise
@@ -231,6 +232,9 @@ class AnnotationItem(BaseModel):
     text: str
     note: Optional[str] = None
     created_at: Optional[str] = None
+    position: Optional[dict] = None
+    content: Optional[dict] = None
+    comment: Optional[dict] = None
 
 
 class AnnotationsRequest(BaseModel):
