@@ -1,33 +1,28 @@
-FROM node:16-alpine
-
-# Set working directory
+# Base stage for shared configuration and dependencies
+FROM node:16-alpine AS base
 WORKDIR /app
-
-# Copy package files
 COPY package*.json ./
+# Install dependencies including devDependencies for development
+RUN npm install
 
-# Install dependencies
-RUN npm ci
-
-# Copy application code
+# Development stage: Source code is mapped via volumes, but we copy it for safety
+FROM base AS development
 COPY . .
+ENV NODE_ENV=development
+EXPOSE 3000
+# npm start will be handled by docker-compose override or this default
+CMD ["npm", "start"]
 
-# Build the application
+# Build stage: Create the production build
+FROM base AS build
+COPY . .
 RUN npm run build
 
-# Stage 2: Serve the application
-FROM node:16-alpine
-
+# Production stage: Serve the built application
+FROM node:16-alpine AS production
 WORKDIR /app
-
-# Install serve to run the built app
 RUN npm install -g serve
-
-# Copy built assets from the previous stage
-COPY --from=0 /app/build ./build
-
-# Expose port
+# Only copy the build artifacts
+COPY --from=build /app/build ./build
 EXPOSE 3000
-
-# Start the application
 CMD ["serve", "-s", "build", "-l", "3000"]

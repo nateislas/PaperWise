@@ -14,6 +14,10 @@ services:
     # Worker automatically reloads when code changes as long as the volume is mapped
 
   frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: development
     command: ["npm", "start"]
     volumes:
       - ./frontend:/app
