@@ -5,7 +5,7 @@
 
 console.log('🧠 PaperWise background script loaded');
 
-const API_BASE_URL = 'http://localhost:8000/api/v1';
+let API_BASE_URL = 'http://localhost:8081/api/v1';
 
 // Store active jobs and their SSE connections
 const activeJobs = new Map();
@@ -91,6 +91,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     cancelJob(message.jobId);
     sendResponse({ success: true });
     return false; // Synchronous response, no need to keep channel open
+  } else if (message.type === 'settings_updated') {
+    console.log('🧠 Settings updated:', message.settings);
+    if (message.settings && message.settings.apiUrl) {
+      API_BASE_URL = message.settings.apiUrl;
+      console.log('🧠 API_BASE_URL updated to:', API_BASE_URL);
+    }
+    sendResponse({ success: true });
+    return false;
   } else {
     console.log('🧠 Unknown message type:', message.type);
     sendResponse({ error: 'Unknown message type' });
@@ -414,8 +422,11 @@ chrome.notifications.onClicked.addListener((notificationId) => {
 function loadSettings() {
   chrome.storage.sync.get(['apiUrl'], (result) => {
     if (result.apiUrl) {
-      // Update API_BASE_URL if custom URL is set
-      // This allows users to point to production deployment
+      API_BASE_URL = result.apiUrl;
+      console.log('🧠 Loaded API URL from settings:', API_BASE_URL);
+    } else {
+      // Set default if not exists
+      chrome.storage.sync.set({ apiUrl: 'http://localhost:8081/api/v1' });
     }
   });
 }
