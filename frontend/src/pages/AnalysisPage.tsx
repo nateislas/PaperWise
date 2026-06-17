@@ -7,18 +7,39 @@ import {
   PdfLoader,
   PdfHighlighter,
   TextHighlight,
-  AreaHighlight
+  AreaHighlight,
+  useHighlightContainerContext
 } from 'react-pdf-highlighter-plus';
 import 'react-pdf-highlighter-plus/style/style.css';
+import 'pdfjs-dist/web/pdf_viewer.css';
 import * as pdfjs from 'pdfjs-dist';
 
-// Explicitly set the PDF.js worker to load from the unpkg CDN to prevent .mjs load failures in Docker/development
-pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
+// Explicitly set the PDF.js worker to load from the local public directory
+pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
 
 const SafePdfLoader = PdfLoader as any;
 const SafePdfHighlighter = PdfHighlighter as any;
 const SafeTextHighlight = TextHighlight as any;
 const SafeAreaHighlight = AreaHighlight as any;
+
+const HighlightComponent = () => {
+  const { highlight, isScrolledTo } = useHighlightContainerContext();
+  const isAreaHighlight = !highlight.position.rects || highlight.position.rects.length === 0;
+
+  return isAreaHighlight ? (
+    <SafeAreaHighlight
+      highlight={highlight}
+      isScrolledTo={isScrolledTo}
+      onChange={(rect: any) => {}}
+    />
+  ) : (
+    <SafeTextHighlight
+      highlight={highlight}
+      isScrolledTo={isScrolledTo}
+      onClick={() => {}}
+    />
+  );
+};
 
 interface AnalysisPageProps {}
 
@@ -44,6 +65,39 @@ const AnalysisPage: React.FC<AnalysisPageProps> = () => {
   const [pendingPosition, setPendingPosition] = useState<any | null>(null);
   const [pendingHideTip, setPendingHideTip] = useState<(() => void) | null>(null);
   const scrollViewerTo = useRef<((highlight: any) => void) | null>(null);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const el = document.querySelector('.PdfHighlighter');
+      const innerWrapper = el?.parentElement;
+      const leftCol = innerWrapper?.parentElement;
+      const mainLayout = leftCol?.parentElement;
+      const pageRoot = mainLayout?.parentElement;
+      const appMain = pageRoot?.parentElement;
+      const appRoot = appMain?.parentElement;
+
+      const getStyleInfo = (node: Element | null | undefined, name: string) => {
+        if (!node) return `${name}: NULL`;
+        const style = window.getComputedStyle(node);
+        return `${name} [${node.tagName.toLowerCase()}.${node.className.split(' ').join('.')}] -> height: ${style.height}, offsetHeight: ${(node as HTMLElement).offsetHeight}px, display: ${style.display}, position: ${style.position}`;
+      };
+
+      console.log('📊 COMPREHENSIVE LAYOUT HIERARCHY CHECK:');
+      console.log(getStyleInfo(appRoot, '1. App Root'));
+      console.log(getStyleInfo(appMain, '2. App Main'));
+      console.log(getStyleInfo(pageRoot, '3. Page Root'));
+      console.log(getStyleInfo(mainLayout, '4. Main Layout'));
+      console.log(getStyleInfo(leftCol, '5. Left Column'));
+      console.log(getStyleInfo(innerWrapper, '6. Inner Wrapper'));
+      console.log(getStyleInfo(el, '7. PdfHighlighter'));
+      
+      const viewer = document.querySelector('.pdfViewer');
+      if (viewer) {
+        console.log(`8. pdfViewer -> height: ${window.getComputedStyle(viewer).height}, offsetHeight: ${(viewer as HTMLElement).offsetHeight}px`);
+      }
+    }, 3000);
+    return () => clearInterval(timer);
+  }, []);
 
   const handleSelectionFinished = (
     position: any,
@@ -308,7 +362,7 @@ const AnalysisPage: React.FC<AnalysisPageProps> = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50/30 flex flex-col">
+    <div className="min-h-screen bg-slate-50/30">
       {/* Sub-header controls */}
       <header className="sticky top-20 z-40 bg-white/80 backdrop-blur-md border-b border-slate-200/50 px-8 py-4 shadow-sm">
         <div className="max-w-[1600px] mx-auto flex items-center justify-between gap-6">
@@ -348,51 +402,40 @@ const AnalysisPage: React.FC<AnalysisPageProps> = () => {
       </header>
 
       {/* Layout container */}
-      <main className="flex-1 flex overflow-hidden h-[calc(100vh-144px)]">
+      <main 
+        className="flex overflow-hidden" 
+        style={{ height: 'calc(100vh - 160px)' }}
+      >
         {/* Left Side: PDF Viewer */}
         {showPdf && (
-          <div className="w-1/2 h-full border-r border-slate-200 bg-slate-100/50 p-4">
-            <div className="w-full h-full bg-white rounded-2xl shadow-soft overflow-hidden border border-slate-200 relative">
-              <SafePdfLoader url={pdfUrl} beforeLoad={<div className="flex items-center justify-center h-full"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-600"></div><p className="ml-3 text-slate-500 font-medium">Loading document...</p></div>}>
-                {(pdfDocument: any) => (
-                  <SafePdfHighlighter
-                    pdfDocument={pdfDocument}
-                    enableAreaSelection={(event: any) => event.altKey}
-                    onScrollChange={() => {}}
-                    scrollRef={(scrollTo: any) => {
-                      scrollViewerTo.current = scrollTo;
-                    }}
-                    onSelectionFinished={(position: any, content: any, hideTipAndSelection: any) => {
-                      handleSelectionFinished(position, content, hideTipAndSelection);
-                    }}
-                    highlightTransform={(
-                      highlight: any,
-                      index: number,
-                      setTip: any,
-                      hideTip: any,
-                      viewportToScaled: any,
-                      screenshot: any,
-                      isScrolledTo: boolean
-                    ) => {
-                      const isAreaHighlight = !highlight.position.rects || highlight.position.rects.length === 0;
-
-                      return isAreaHighlight ? (
-                        <SafeAreaHighlight
-                          highlight={highlight}
-                          onChange={(rect: any) => {}}
-                        />
-                      ) : (
-                        <SafeTextHighlight
-                          highlight={highlight}
-                          onClick={() => {
-                            setActiveTab('annotations');
-                          }}
-                        />
-                      );
-                    }}
-                    highlights={annotations.filter(ann => ann.position)}
-                  />
-                )}
+          <div 
+            className="w-1/2 border-r border-slate-200 bg-slate-100/50 relative"
+            style={{ height: '100%' }}
+          >
+            <div 
+              className="bg-white rounded-2xl shadow-soft overflow-hidden border border-slate-200"
+              style={{ position: 'absolute', top: '1rem', left: '1rem', right: '1rem', bottom: '1rem' }}
+            >
+              <SafePdfLoader document={pdfUrl} workerSrc="/pdf.worker.min.mjs" beforeLoad={() => <div className="flex items-center justify-center h-full"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-600"></div><p className="ml-3 text-slate-500 font-medium">Loading document...</p></div>}>
+                {(pdfDocument: any) => {
+                  console.log("📄 pdfDocument loaded successfully:", pdfDocument);
+                  return (
+                    <SafePdfHighlighter
+                      pdfDocument={pdfDocument}
+                      enableAreaSelection={(event: any) => event.altKey}
+                      onScrollChange={() => {}}
+                      utilsRef={(utils: any) => {
+                        scrollViewerTo.current = utils.scrollTo;
+                      }}
+                      onSelection={(position: any, content: any, hideTipAndSelection: any) => {
+                        handleSelectionFinished(position, content, hideTipAndSelection);
+                      }}
+                      highlights={annotations.filter(ann => ann.position)}
+                    >
+                      <HighlightComponent />
+                    </SafePdfHighlighter>
+                  );
+                }}
               </SafePdfLoader>
             </div>
           </div>

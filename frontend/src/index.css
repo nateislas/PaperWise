@@ -237,3 +237,17 @@ code {
 .analysis-results {
   @apply bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-lg p-4 mb-4;
 }
+
+/* ===== PDF Viewer Layout Overrides ===== */
+/* The PdfHighlighter component renders with position:absolute and height:100%.
+   We need to ensure its containing block has a definite height. */
+.PdfHighlighter {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  overflow: auto !important;
+}
