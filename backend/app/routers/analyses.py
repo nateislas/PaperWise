@@ -5,6 +5,7 @@ Handles listing, viewing, and managing analysis history
 
 from fastapi import APIRouter, HTTPException, Query, Path
 from fastapi.responses import FileResponse
+from pydantic import BaseModel
 from typing import List, Optional
 import os
 
@@ -222,3 +223,51 @@ async def get_analysis_stats():
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get stats: {str(e)}")
+
+
+class AnnotationItem(BaseModel):
+    id: str
+    page: int
+    text: str
+    note: Optional[str] = None
+    created_at: Optional[str] = None
+
+
+class AnnotationsRequest(BaseModel):
+    annotations: List[AnnotationItem]
+
+
+@router.get("/analyses/{analysis_id}/annotations")
+async def get_annotations(analysis_id: str = Path(..., description="Analysis ID")):
+    """
+    Get user annotations for a research paper
+    """
+    try:
+        annotations = analysis_manager.get_analysis_annotations(analysis_id)
+        return {"annotations": annotations}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to load annotations: {str(e)}")
+
+
+@router.post("/analyses/{analysis_id}/annotations")
+async def save_annotations(
+    request: AnnotationsRequest,
+    analysis_id: str = Path(..., description="Analysis ID")
+):
+    """
+    Save annotations for a research paper
+    """
+    try:
+        # Check if analysis exists
+        metadata = analysis_manager.get_analysis_metadata(analysis_id)
+        if not metadata:
+            raise HTTPException(status_code=404, detail="Analysis not found")
+        
+        # Serialize list of AnnotationItem objects
+        serialized_annotations = [item.model_dump() for item in request.annotations]
+        analysis_manager.save_analysis_annotations(analysis_id, serialized_annotations)
+        return {"status": "success", "message": "Annotations saved successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to save annotations: {str(e)}")

@@ -7,7 +7,7 @@ import os
 import json
 import shutil
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, List, Optional, Any
 from pathlib import Path
 
@@ -53,7 +53,7 @@ class AnalysisManager:
         
         # Add timestamps if not present
         if "created_at" not in metadata:
-            metadata["created_at"] = datetime.utcnow().isoformat()
+            metadata["created_at"] = datetime.now(timezone.utc).isoformat()
         
         with open(metadata_path, 'w', encoding='utf-8') as f:
             json.dump(metadata, f, indent=2, ensure_ascii=False)
@@ -221,6 +221,25 @@ class AnalysisManager:
         except Exception:
             return False
     
+    def save_analysis_annotations(self, analysis_id: str, annotations: List[Dict[str, Any]]) -> str:
+        """Save annotations to JSON file"""
+        analysis_dir = os.path.join(self.analyses_dir, analysis_id)
+        annotations_path = os.path.join(analysis_dir, "annotations.json")
+        with open(annotations_path, 'w', encoding='utf-8') as f:
+            json.dump(annotations, f, indent=2, ensure_ascii=False)
+        return annotations_path
+
+    def get_analysis_annotations(self, analysis_id: str) -> List[Dict[str, Any]]:
+        """Get annotations for an analysis"""
+        annotations_path = os.path.join(self.analyses_dir, analysis_id, "annotations.json")
+        if not os.path.exists(annotations_path):
+            return []
+        try:
+            with open(annotations_path, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except Exception:
+            return []
+
     def get_analysis_file_path(self, analysis_id: str, file_type: str) -> Optional[str]:
         """Get path to analysis file (paper, result, figure, etc.)"""
         analysis_dir = os.path.join(self.analyses_dir, analysis_id)
@@ -233,6 +252,8 @@ class AnalysisManager:
             return os.path.join(analysis_dir, "results", "comprehensive.json")
         elif file_type == "figures":
             return os.path.join(analysis_dir, "figures")
+        elif file_type == "annotations":
+            return os.path.join(analysis_dir, "annotations.json")
         
         return None
 

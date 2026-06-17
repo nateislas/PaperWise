@@ -10,6 +10,21 @@ import concurrent.futures
 
 from app.config import settings
 
+# No-op decorators (AgentOps removed)
+def agent(name=None):
+    def decorator(cls):
+        return cls
+    return decorator
+
+def operation(func):
+    return func
+
+def tool(name=None, cost=None):
+    def decorator(func):
+        return func
+    return decorator
+
+
 logger = logging.getLogger(__name__)
 
 class BaseAgent(ABC):
@@ -37,10 +52,12 @@ class BaseAgent(ABC):
         pass
     
     @abstractmethod
+    @operation
     def analyze(self, documents: List[Document], query: Optional[str] = None) -> Dict[str, Any]:
         """Main analysis method to be implemented by each agent"""
         pass
     
+    @operation
     async def analyze_stream(self, documents: List[Document], query: Optional[str] = None) -> AsyncGenerator[str, None]:
         """Streaming analysis method for real-time responses"""
         logger.info(f"🎯 {self.name}: Starting streaming analysis")
@@ -104,6 +121,7 @@ class BaseAgent(ABC):
         
         return messages
     
+    @tool(name="LlamaAPICall", cost=0.01)
     def _call_llama(self, messages: List[Dict[str, str]]) -> str:
         """Synchronous call to Llama API"""
         start_time = time.time()
@@ -125,6 +143,7 @@ class BaseAgent(ABC):
             logger.error(f"Error calling Llama API for {self.name}: {str(e)}")
             raise e
     
+    @tool(name="LlamaAPIStream", cost=0.01)
     async def _call_llama_stream(self, messages: List[Dict[str, str]]) -> AsyncGenerator[str, None]:
         """Streaming call to Llama API"""
         start_time = time.time()

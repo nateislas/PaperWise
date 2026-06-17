@@ -8,7 +8,7 @@ import json
 import asyncio
 import uuid
 import httpx
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.agents.orchestrator_agent import OrchestratorAgent
 from app.config import settings
@@ -19,8 +19,14 @@ from app.analysis_manager import analysis_manager
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
-# Initialize the orchestrator agent
-orchestrator = OrchestratorAgent()
+# Initialize the orchestrator agent lazily
+orchestrator = None
+
+def get_orchestrator():
+    global orchestrator
+    if orchestrator is None:
+        orchestrator = OrchestratorAgent()
+    return orchestrator
 
 class AnalysisRequest(BaseModel):
     file_id: str
@@ -138,7 +144,7 @@ async def analyze_paper(request: AnalysisRequest):
         logger.info(f"Starting analysis for file: {file_path}")
         
         # Run the analysis
-        result = await orchestrator.analyze_paper(file_path, request.query)
+        result = await get_orchestrator().analyze_paper(file_path, request.query)
         
         if result["status"] == "error":
             raise HTTPException(status_code=500, detail=result["error"])
@@ -194,13 +200,14 @@ async def analyze_paper_async(request: AsyncAnalyzeRequest):
                 "arxiv_id": "",
                 "title": "Unknown Paper",
                 "authors": [],
-                "upload_date": datetime.utcnow().isoformat()
+                "upload_date": datetime.now(timezone.utc).isoformat()
             },
             "analysis_info": {
                 "type": request.analysis_type,
                 "query": request.query,
-                "started_at": datetime.utcnow().isoformat(),
-                "status": "queued"
+                "started_at": datetime.now(timezone.utc).isoformat(),
+                "status": "queued",
+                "model": settings.llama_model
             }
         }
 
@@ -347,7 +354,7 @@ async def analyze_paper_stream(request: AnalysisRequest):
             chunk_count = 0
             try:
                 logger.info(f"📡 Starting stream generation...")
-                async for chunk in orchestrator.analyze_paper_stream(file_path, request.query):
+                async for chunk in get_orchestrator().analyze_paper_stream(file_path, request.query):
                     chunk_count += 1
                     # Convert chunk to JSON and send as Server-Sent Event
                     data = json.dumps(chunk, ensure_ascii=False)
@@ -498,13 +505,13 @@ async def analyze_methodology(request: AnalysisRequest):
             raise HTTPException(status_code=404, detail="File not found")
         
         # Parse the PDF first
-        pdf_result = orchestrator.pdf_parser.parse_pdf(file_path)
+        pdf_result = get_orchestrator().pdf_parser.parse_pdf(file_path)
         
         if pdf_result["status"] == "error":
             raise HTTPException(status_code=500, detail=f"Failed to parse PDF: {pdf_result.get('error', 'Unknown error')}")
         
         # Run methodology analysis only
-        methodology_result = orchestrator.methodology_agent.analyze(
+        methodology_result = get_orchestrator().methodology_agent.analyze(
             pdf_result["documents"], 
             request.query
         )
@@ -538,13 +545,13 @@ async def analyze_results(request: AnalysisRequest):
             raise HTTPException(status_code=404, detail="File not found")
         
         # Parse the PDF first
-        pdf_result = orchestrator.pdf_parser.parse_pdf(file_path)
+        pdf_result = get_orchestrator().pdf_parser.parse_pdf(file_path)
         
         if pdf_result["status"] == "error":
             raise HTTPException(status_code=500, detail=f"Failed to parse PDF: {pdf_result.get('error', 'Unknown error')}")
         
         # Run results analysis only
-        results_result = orchestrator.results_agent.analyze(
+        results_result = get_orchestrator().results_agent.analyze(
             pdf_result["documents"], 
             request.query
         )
@@ -578,13 +585,13 @@ async def analyze_contextualization(request: AnalysisRequest):
             raise HTTPException(status_code=404, detail="File not found")
         
         # Parse the PDF first
-        pdf_result = orchestrator.pdf_parser.parse_pdf(file_path)
+        pdf_result = get_orchestrator().pdf_parser.parse_pdf(file_path)
         
         if pdf_result["status"] == "error":
             raise HTTPException(status_code=500, detail=f"Failed to parse PDF: {pdf_result.get('error', 'Unknown error')}")
         
         # Run contextualization analysis only
-        contextualization_result = orchestrator.contextualization_agent.analyze(
+        contextualization_result = get_orchestrator().contextualization_agent.analyze(
             pdf_result["documents"], 
             request.query
         )

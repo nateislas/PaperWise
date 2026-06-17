@@ -17,15 +17,14 @@ dependencies = [
     "openai>=1.6.1",
     "pymupdf>=1.23.8",
     "python-dotenv>=1.0.0",
-    "chromadb>=0.4.18",
-    "sentence-transformers>=2.2.2",
-    "numpy>=1.24.3",
-    "pandas>=2.1.4",
     "httpx>=0.25.2",
     "aiofiles>=23.2.1",
     "Pillow>=10.1.0",
     "tiktoken>=0.5.2",
     "httptools>=0.6.1",
+    "celery>=5.3.6",
+    "redis>=5.0.1",
+    "pageindex",
 ]
 
 [project.optional-dependencies]
@@ -43,3 +42,6 @@ dev-dependencies = [
     "pytest>=7.4.3",
     "pytest-asyncio>=0.21.1",
 ]
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
