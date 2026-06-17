@@ -28,11 +28,17 @@ def create_analysis_graph():
     builder.add_edge(START, "parse_pdf")
     builder.add_edge("parse_pdf", "classify_field")
     
-    # Expert analyses
+    # Parallel Expert Analysis (Fan-out)
     builder.add_edge("classify_field", "analyze_methodology")
-    builder.add_edge("analyze_methodology", "analyze_results")
-    builder.add_edge("analyze_results", "analyze_context")
+    builder.add_edge("classify_field", "analyze_results")
+    builder.add_edge("classify_field", "analyze_context")
+    
+    # Synthesis (Fan-in)
+    # The synthesis node will only run once all three parallel analysis nodes have completed.
+    builder.add_edge("analyze_methodology", "synthesize")
+    builder.add_edge("analyze_results", "synthesize")
     builder.add_edge("analyze_context", "synthesize")
+    
     builder.add_edge("synthesize", END)
     
     # Compile
