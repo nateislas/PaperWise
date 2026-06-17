@@ -28,8 +28,7 @@ def create_analysis_graph():
     builder.add_edge(START, "parse_pdf")
     builder.add_edge("parse_pdf", "classify_field")
     
-    # Expert analyses - keeping sequential for now to ensure state accumulation 
-    # (though they could be parallelized if we used a more complex reducer)
+    # Expert analyses
     builder.add_edge("classify_field", "analyze_methodology")
     builder.add_edge("analyze_methodology", "analyze_results")
     builder.add_edge("analyze_results", "analyze_context")

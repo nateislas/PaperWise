@@ -49,22 +49,47 @@ Provide clean, well-structured content that can be used by other analysis agents
             
             logger.info(f"Parsing PDF: {file_path}")
             
-            # Open the PDF
+            # Check for LlamaParse (High quality agentic parsing)
+            documents = []
+            text_content = ""
+            if hasattr(settings, 'llama_cloud_api_key') and settings.llama_cloud_api_key:
+                try:
+                    logger.info("🚀 Using LlamaParse for high-quality extraction")
+                    from llama_parse import LlamaParse
+                    
+                    parser = LlamaParse(
+                        api_key=settings.llama_cloud_api_key,
+                        result_type="markdown",
+                        verbose=True,
+                        language="en",
+                    )
+                    
+                    # load_data returns a list of langchain/llama-index Document objects
+                    # We'll use it to get the full markdown content
+                    llama_docs = parser.load_data(file_path)
+                    if llama_docs:
+                        text_content = "\n\n".join([doc.text for doc in llama_docs])
+                        logger.info(f"✅ LlamaParse extracted {len(text_content)} characters")
+                except Exception as lp_err:
+                    logger.warning(f"⚠️ LlamaParse failed, falling back to PyMuPDF: {lp_err}")
+
+            # Open the PDF for PyMuPDF (always used for figures and as fallback for text)
             doc = fitz.open(file_path)
             
             # Extract metadata
             metadata = self._extract_metadata(doc)
             
-            # Extract text content
-            text_content = self._extract_text(doc)
+            # If LlamaParse didn't get text, use PyMuPDF
+            if not text_content:
+                text_content = self._extract_text(doc)
             
-            # Extract tables
+            # Extract tables (PyMuPDF - LlamaParse markdown includes tables, but we keep this for structured data)
             tables = self._extract_tables(doc)
             
-            # Extract figures (save image assets and collect metadata)
+            # Extract figures (PyMuPDF - always use this for saving PNG assets)
             figures = self._extract_figures(doc, file_path)
             
-            # Create document chunks
+            # Create document chunks for LangChain agents
             documents = self._create_documents(text_content, metadata)
             
             # Close the document

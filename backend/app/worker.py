@@ -148,6 +148,35 @@ def analyze_job(self, job: Dict[str, Any]) -> Dict[str, Any]:
                 except Exception as pageindex_error:
                     logger.warning(f"⚠️ PageIndex background pre-submission failed: {pageindex_error}")
 
+            # NEW: Upload document to LlamaCloud Managed RAG
+            if settings.llama_cloud_api_key:
+                try:
+                    logger.info(f"☁️ Uploading paper to LlamaCloud Managed RAG: {file_path}")
+                    from llama_cloud_services import LlamaCloudIndex
+                    
+                    # Connection parameters
+                    collection_name = f"paper_{analysis_id}"
+                    
+                    # Get or Create Index
+                    index = await LlamaCloudIndex.acreate_index(
+                        name=collection_name,
+                        project_name=settings.llama_cloud_project,
+                        organization_id=settings.llama_cloud_org_id,
+                        api_key=settings.llama_cloud_api_key
+                    )
+                    
+                    # Upload file
+                    await index.aupload_file(file_path)
+                    logger.info(f"✅ File uploaded to LlamaCloud. Waiting for ingestion...")
+                    
+                    # Wait for ingestion to complete so it's ready for chat immediately
+                    await index.await_for_completion()
+                    
+                    metadata["llama_index_id"] = index.id
+                    logger.info(f"✅ LlamaCloud ingestion complete. Index ID: {index.id}")
+                except Exception as llama_error:
+                    logger.warning(f"⚠️ LlamaCloud upload failed: {llama_error}")
+
             analysis_manager.save_analysis_metadata(analysis_id, metadata)
 
         set_state(job["job_id"], state="done", stage="finalizing", progress=100)

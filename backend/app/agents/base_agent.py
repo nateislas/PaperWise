@@ -1,12 +1,11 @@
 from abc import ABC, abstractmethod
 from typing import Dict, List, Any, Optional, AsyncGenerator
 from langchain.schema import Document
-from langchain.schema import HumanMessage, SystemMessage
+from langchain.schema.messages import HumanMessage, SystemMessage, BaseMessage
+from langchain_google_genai import ChatGoogleGenerativeAI
 import logging
-from openai import OpenAI
 import asyncio
 import time
-import concurrent.futures
 
 from app.config import settings
 
@@ -29,19 +28,21 @@ logger = logging.getLogger(__name__)
 
 class BaseAgent(ABC):
     """
-    Base class for all specialized analysis agents
+    Base class for all specialized analysis agents using LangChain's Google Generative AI integration
     """
     
     def __init__(self, name: str, description: str):
         self.name = name
         self.description = description
         
-        # Initialize LLM client (OpenAI-compatible API — currently Gemini)
-        self.llm_client = OpenAI(
-            api_key=settings.gemini_api_key,
-            base_url=settings.gemini_base_url,
+        # Initialize LangChain Gemini client
+        self.llm = ChatGoogleGenerativeAI(
+            model=settings.gemini_model,
+            google_api_key=settings.gemini_api_key,
+            temperature=settings.gemini_temperature,
             timeout=settings.request_timeout,
             max_retries=2,
+            streaming=True
         )
         
         self.system_prompt = self._get_system_prompt()
@@ -61,15 +62,10 @@ class BaseAgent(ABC):
     async def analyze_stream(self, documents: List[Document], query: Optional[str] = None) -> AsyncGenerator[str, None]:
         """Streaming analysis method for real-time responses"""
         logger.info(f"🎯 {self.name}: Starting streaming analysis")
-        logger.info(f"📄 Documents count: {len(documents)}")
-        logger.info(f"❓ Query: {query}")
         
         try:
             content = self._prepare_content_for_analysis(documents, query)
-            logger.info(f"📝 {self.name}: Prepared content length: {len(content)}")
-            
             messages = self._create_messages(content, query)
-            logger.info(f"💬 {self.name}: Created {len(messages)} messages")
             
             chunk_count = 0
             async for chunk in self._call_llm_stream(messages):
@@ -80,7 +76,6 @@ class BaseAgent(ABC):
                 
         except Exception as e:
             logger.error(f"❌ Error in streaming analysis for {self.name}: {str(e)}")
-            logger.error(f"❌ Exception type: {type(e).__name__}")
             import traceback
             logger.error(f"❌ Traceback: {traceback.format_exc()}")
             yield f"Error in {self.name} analysis: {str(e)}"
@@ -100,7 +95,6 @@ class BaseAgent(ABC):
         # If content is too long, truncate intelligently
         max_content_length = 32000  # Leave room for system prompt and response
         if len(combined_content) > max_content_length:
-            # Keep the beginning and end, truncate middle
             half_length = max_content_length // 2
             combined_content = (
                 combined_content[:half_length] + 
@@ -110,75 +104,50 @@ class BaseAgent(ABC):
         
         return combined_content
     
-    def _create_messages(self, content: str, query: Optional[str] = None) -> List[Dict[str, str]]:
-        """Create messages for the LLM API"""
-        messages = [{"role": "system", "content": self.system_prompt}]
+    def _create_messages(self, content: str, query: Optional[str] = None) -> List[BaseMessage]:
+        """Create messages for the LangChain LLM"""
+        messages = [SystemMessage(content=self.system_prompt)]
         
         if query:
-            messages.append({"role": "user", "content": f"Query: {query}\n\nContent to analyze:\n{content}"})
+            messages.append(HumanMessage(content=f"Query: {query}\n\nContent to analyze:\n{content}"))
         else:
-            messages.append({"role": "user", "content": content})
+            messages.append(HumanMessage(content=content))
         
         return messages
     
-    @tool(name="LLMCall", cost=0.01)
-    def _call_llm(self, messages: List[Dict[str, str]]) -> str:
-        """Synchronous call to the configured LLM"""
+    @tool(name="LLMCall")
+    async def _call_llm(self, messages: List[BaseMessage]) -> str:
+        """Asynchronous call to the configured LLM"""
         start_time = time.time()
         
         try:
-            response = self.llm_client.chat.completions.create(
-                model=settings.gemini_model,
-                messages=messages,
-                temperature=settings.gemini_temperature,
-                max_tokens=settings.max_tokens_per_request,
-                timeout=settings.request_timeout
-            )
-            
+            response = await self.llm.ainvoke(messages)
             elapsed_time = time.time() - start_time
             logger.info(f"{self.name} API call completed in {elapsed_time:.2f}s")
-            
-            return response.choices[0].message.content
+            return response.content
         except Exception as e:
             logger.error(f"Error calling LLM for {self.name}: {str(e)}")
             raise e
     
-    @tool(name="LLMStream", cost=0.01)
-    async def _call_llm_stream(self, messages: List[Dict[str, str]]) -> AsyncGenerator[str, None]:
+    @tool(name="LLMStream")
+    async def _call_llm_stream(self, messages: List[BaseMessage]) -> AsyncGenerator[str, None]:
         """Streaming call to the configured LLM"""
         start_time = time.time()
         chunk_count = 0
         
-        logger.info(f"🎯 {self.name}: Starting streaming API call")
-        
         try:
-            # Make the API call in a thread to avoid blocking the event loop
-            response = await asyncio.to_thread(
-                self.llm_client.chat.completions.create,
-                model=settings.gemini_model,
-                messages=messages,
-                temperature=settings.gemini_temperature,
-                max_tokens=settings.max_tokens_per_request,
-                timeout=settings.request_timeout,
-                stream=True
-            )
-            
             buffer = ""
-            # Process the synchronous iterator directly - this is the correct approach
-            for chunk in response:
-                if chunk.choices[0].delta.content:
-                    content = chunk.choices[0].delta.content
+            async for chunk in self.llm.astream(messages):
+                if chunk.content:
+                    content = chunk.content
                     buffer += content
                     
-                    # Yield when buffer reaches chunk size
                     if len(buffer) >= settings.stream_chunk_size:
                         chunk_count += 1
                         yield buffer
                         buffer = ""
-                        # Small delay to prevent overwhelming
                         await asyncio.sleep(0.005)
             
-            # Yield any remaining content
             if buffer:
                 chunk_count += 1
                 yield buffer
@@ -188,20 +157,15 @@ class BaseAgent(ABC):
             
         except Exception as e:
             logger.error(f"❌ Error in streaming LLM call for {self.name}: {str(e)}")
-            logger.error(f"❌ Exception type: {type(e).__name__}")
-            import traceback
-            logger.error(f"❌ Traceback: {traceback.format_exc()}")
             yield f"Error in {self.name} analysis: {str(e)}"
     
     def _extract_relevant_sections(self, documents: List[Document], section_keywords: List[str]) -> str:
         """Extract sections relevant to this agent's analysis"""
         relevant_content = []
-        
         for doc in documents:
             content = doc.page_content.lower()
             if any(keyword in content for keyword in section_keywords):
                 relevant_content.append(doc.page_content)
-        
         return "\n\n".join(relevant_content) if relevant_content else ""
     
     def _format_analysis_result(self, analysis: str, confidence: float = 0.8) -> Dict[str, Any]:
@@ -222,3 +186,4 @@ class BaseAgent(ABC):
         """Log analysis activity"""
         logger.info(f"{self.name} analyzed {documents_count} documents, "
                    f"produced {analysis_length} characters of analysis")
+
