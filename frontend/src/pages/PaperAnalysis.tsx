@@ -1,15 +1,12 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import FileUpload from '../components/FileUpload';
-import StreamingAnalysisResults from '../components/StreamingAnalysisResults';
-
 import axios from 'axios';
 
 const PaperAnalysis: React.FC = () => {
+  const navigate = useNavigate();
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
-  const [analysis, setAnalysis] = useState<any>(null);
-
-  const [fileId, setFileId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const handleFileUpload = async (file: File) => {
@@ -20,36 +17,33 @@ const PaperAnalysis: React.FC = () => {
       const formData = new FormData();
       formData.append('file', file);
       
-      const response = await axios.post('/api/v1/upload', formData, {
+      const apiBase = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+      const response = await axios.post(`${apiBase}/api/v1/upload`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
       });
       
-      setFileId(response.data.file_id);
+      const fileId = response.data.file_id;
       setUploadedFile(file);
+
+      // Start analysis asynchronously
+      const analysisResponse = await axios.post(`${apiBase}/api/v1/analyze/async`, {
+        file_id: fileId,
+        analysis_type: 'comprehensive'
+      });
+
+      // Redirect to the analysis page
+      navigate(`/analysis/${analysisResponse.data.job_id}`);
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to upload file');
-    } finally {
       setIsUploading(false);
     }
   };
 
   const handleFileRemove = () => {
     setUploadedFile(null);
-    setFileId(null);
-    setAnalysis(null);
     setError(null);
-  };
-
-
-
-  const handleStreamingComplete = (finalAnalysis: any) => {
-    setAnalysis(finalAnalysis);
-  };
-
-  const handleStreamingError = (errorMessage: string) => {
-    setError(errorMessage);
   };
 
   return (
@@ -74,21 +68,6 @@ const PaperAnalysis: React.FC = () => {
           error={error}
         />
       </div>
-
-
-
-      {/* Analysis Results */}
-      {uploadedFile && fileId && (
-        <div className="mb-8">
-          <StreamingAnalysisResults
-            fileId={fileId}
-            onComplete={handleStreamingComplete}
-            onError={handleStreamingError}
-          />
-        </div>
-      )}
-
-
     </div>
   );
 };
