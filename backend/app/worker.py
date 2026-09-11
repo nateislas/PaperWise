@@ -45,13 +45,11 @@ def analyze_job(self, job: Dict[str, Any]) -> Dict[str, Any]:
 
     if not file_path:
         set_state(job.get("job_id", "unknown"), state="error", stage="failed", error="missing_file_path")
-        self.update_state(state="FAILURE", meta={"error": "missing_file_path"})
         raise RuntimeError("missing_file_path")
 
     file_path = os.path.abspath(file_path)
     if not os.path.exists(file_path):
         set_state(job.get("job_id", "unknown"), state="error", stage="failed", error="file_not_found")
-        self.update_state(state="FAILURE", meta={"error": "file_not_found"})
         raise FileNotFoundError(file_path)
 
     try:
@@ -150,32 +148,38 @@ def analyze_job(self, job: Dict[str, Any]) -> Dict[str, Any]:
 
             # NEW: Upload document to LlamaCloud Managed RAG
             if settings.llama_cloud_api_key:
-                try:
-                    logger.info(f"☁️ Uploading paper to LlamaCloud Managed RAG: {file_path}")
-                    from llama_cloud_services import LlamaCloudIndex
-                    
-                    # Connection parameters
-                    collection_name = f"paper_{analysis_id}"
-                    
-                    # Get or Create Index
-                    index = await LlamaCloudIndex.acreate_index(
-                        name=collection_name,
-                        project_name=settings.llama_cloud_project,
-                        organization_id=settings.llama_cloud_org_id,
-                        api_key=settings.llama_cloud_api_key
-                    )
-                    
-                    # Upload file
-                    await index.aupload_file(file_path)
-                    logger.info(f"✅ File uploaded to LlamaCloud. Waiting for ingestion...")
-                    
-                    # Wait for ingestion to complete so it's ready for chat immediately
-                    await index.await_for_completion()
-                    
-                    metadata["llama_index_id"] = index.id
-                    logger.info(f"✅ LlamaCloud ingestion complete. Index ID: {index.id}")
-                except Exception as llama_error:
-                    logger.warning(f"⚠️ LlamaCloud upload failed: {llama_error}")
+                async def upload_to_llama():
+                    try:
+                        logger.info(f"☁️ Uploading paper to LlamaCloud Managed RAG: {file_path}")
+                        from llama_cloud_services import LlamaCloudIndex
+                        
+                        # Connection parameters
+                        collection_name = f"paper_{analysis_id}"
+                        
+                        # Get or Create Index
+                        index = await LlamaCloudIndex.acreate_index(
+                            name=collection_name,
+                            project_name=settings.llama_cloud_project,
+                            organization_id=settings.llama_cloud_org_id,
+                            api_key=settings.llama_cloud_api_key
+                        )
+                        
+                        # Upload file
+                        await index.aupload_file(file_path)
+                        logger.info(f"✅ File uploaded to LlamaCloud. Waiting for ingestion...")
+                        
+                        # Wait for ingestion to complete so it's ready for chat immediately
+                        await index.await_for_completion()
+                        
+                        return index.id
+                    except Exception as llama_error:
+                        logger.warning(f"⚠️ LlamaCloud upload failed: {llama_error}")
+                        return None
+
+                llama_index_id = asyncio.run(upload_to_llama())
+                if llama_index_id:
+                    metadata["llama_index_id"] = llama_index_id
+                    logger.info(f"✅ LlamaCloud ingestion complete. Index ID: {llama_index_id}")
 
             analysis_manager.save_analysis_metadata(analysis_id, metadata)
 
@@ -185,11 +189,11 @@ def analyze_job(self, job: Dict[str, Any]) -> Dict[str, Any]:
         
         return {"analysis_id": analysis_id}
     except Exception as e:
-        # Let Celery capture the exception type and message
-        set_state(job.get("job_id", "unknown"), state="error", stage="failed", error=type(e).__name__)
-        publish_update(job.get("job_id", "unknown"), {"type": "error", "error": type(e).__name__})
-        self.update_state(state="FAILURE", meta={"error": type(e).__name__})
-        
+        logger.error(f"Task analyze_job failed for job {job.get('job_id')}: {e}", exc_info=True)
+        set_state(job.get("job_id", "unknown"), state="error", stage="failed", error=str(e))
+        publish_update(job.get("job_id", "unknown"), {"type": "error", "error": str(e)})
+        # Re-raising allows Celery to record standard FAILURE state and exception cleanly
+        # without corrupting Celery's result payload.
         raise
 
 

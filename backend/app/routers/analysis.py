@@ -356,6 +356,29 @@ async def analyze_paper_stream(request: AnalysisRequest):
                 logger.info(f"📡 Starting stream generation...")
                 async for chunk in get_orchestrator().analyze_paper_stream(file_path, request.query):
                     chunk_count += 1
+
+                    # Persist completed analysis result to disk for library and query endpoints
+                    if chunk.get("type") == "complete" and chunk.get("analysis"):
+                        try:
+                            analysis_data = chunk["analysis"]
+                            target_analysis_id = None
+                            
+                            # If file_path is inside an analyses directory, extract the analysis_id
+                            if "analyses" in file_path:
+                                parts = file_path.split("analyses" + os.sep)
+                                if len(parts) > 1:
+                                    target_analysis_id = parts[1].split(os.sep)[0]
+                            
+                            if not target_analysis_id:
+                                target_analysis_id = analysis_data.get("analysis_id")
+
+                            if target_analysis_id:
+                                analysis_manager.save_analysis_result(target_analysis_id, "comprehensive", analysis_data)
+                                analysis_manager.update_analysis_status(target_analysis_id, "completed")
+                                logger.info(f"💾 Saved completed streaming analysis to disk: {target_analysis_id}")
+                        except Exception as save_err:
+                            logger.warning(f"⚠️ Failed to auto-save streaming analysis result: {save_err}")
+
                     # Convert chunk to JSON and send as Server-Sent Event
                     data = json.dumps(chunk, ensure_ascii=False)
                     stream_data = f"data: {data}\n\n"

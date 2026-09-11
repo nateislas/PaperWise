@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import MagicMock, patch
 import os
-from langchain.schema import Document
+from langchain_core.documents import Document
 from app.routers.chat import rank_chunks, ChatRequest
 
 def test_rank_chunks():

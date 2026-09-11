@@ -8,6 +8,7 @@ import json
 from app.agents.base_agent import BaseAgent, agent
 from app.agents.graph.builder import analysis_graph
 from app.agents.graph.state import PaperAnalysisState
+from app.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -48,23 +49,40 @@ class OrchestratorAgent(BaseAgent):
             "documents": [],
             "detected_field": "generic",
             "field_info": None,
+            "draft_methodology": "",
+            "draft_results": "",
+            "draft_context": "",
             "methodology_analysis": "",
             "results_analysis": "",
             "context_analysis": "",
             "final_report": None,
             "status_updates": [],
-            "errors": []
+            "errors": [],
+            "node_provenance": [],
+            "tool_calls": [],
+            "enrichment_data": {}
         }
         
         try:
+            # Yield immediate initial status so frontend receives feedback within milliseconds
+            yield {
+                "type": "status",
+                "stage": "parsing",
+                "analysis_id": analysis_id,
+                "message": "Extracting document structure & high-resolution figures...",
+                "progress": 5
+            }
+
             # Single pass over graph execution to avoid double-processing and API costs
-            async for event in analysis_graph.astream(full_state, stream_mode="updates"):
+            # Configured with thread_id to allow MemorySaver checkpointer persistence
+            config = {"configurable": {"thread_id": analysis_id}}
+            async for event in analysis_graph.astream(full_state, config=config, stream_mode="updates"):
                 for node_name, updates in event.items():
                     logger.info(f"📍 Node completed: {node_name}")
                     
                     # Accumulate state locally to track progress for the final report
                     for key, val in updates.items():
-                        if key in ["status_updates", "errors"]:
+                        if key in ["status_updates", "errors", "node_provenance", "tool_calls"]:
                             full_state[key].extend(val)
                         else:
                             full_state[key] = val
@@ -77,13 +95,71 @@ class OrchestratorAgent(BaseAgent):
                                 **status
                             }
                     
+                    # Stage transitions & progress updates
+                    if node_name == "parse_pdf":
+                        yield {
+                            "type": "status",
+                            "stage": "classification",
+                            "analysis_id": analysis_id,
+                            "message": "Classifying research domain & calibrating evaluation rubrics...",
+                            "progress": 25
+                        }
+                    elif node_name == "classify_field":
+                        field_name = updates.get("detected_field", full_state.get("detected_field", "generic"))
+                        yield {
+                            "type": "status",
+                            "stage": "round_1_debate",
+                            "analysis_id": analysis_id,
+                            "message": f"Domain: {field_name.title()}. Round 1: Specialized agents drafting initial analyses...",
+                            "progress": 35
+                        }
+                    elif node_name == "debate_sync":
+                        yield {
+                            "type": "status",
+                            "stage": "cross_critique",
+                            "analysis_id": analysis_id,
+                            "message": "Synchronizing expert drafts for cross-peer critique & debate...",
+                            "progress": 60
+                        }
+                    elif node_name == "synthesize":
+                        yield {
+                            "type": "status",
+                            "stage": "synthesis",
+                            "analysis_id": analysis_id,
+                            "message": "Synthesizing comprehensive structured research report...",
+                            "progress": 90
+                        }
+                    elif node_name == "enrich_context":
+                        yield {
+                            "type": "status",
+                            "stage": "enrichment",
+                            "analysis_id": analysis_id,
+                            "message": "Finalizing analysis report and citations...",
+                            "progress": 96
+                        }
+
                     # Yield specific chunks for UI compatibility (backward compatibility)
-                    if node_name == "analyze_methodology" and "methodology_analysis" in updates:
-                        yield {"type": "methodology_chunk", "analysis_id": analysis_id, "content": updates["methodology_analysis"], "progress": 50}
-                    elif node_name == "analyze_results" and "results_analysis" in updates:
-                        yield {"type": "results_chunk", "analysis_id": analysis_id, "content": updates["results_analysis"], "progress": 70}
-                    elif node_name == "analyze_context" and "context_analysis" in updates:
-                        yield {"type": "contextualization_chunk", "analysis_id": analysis_id, "content": updates["context_analysis"], "progress": 85}
+                    if node_name in ("analyze_methodology", "analyze_methodology_r1", "analyze_methodology_r2"):
+                        content = updates.get("methodology_analysis") or updates.get("draft_methodology")
+                        if content:
+                            is_revised = "methodology_analysis" in updates
+                            progress = 70 if is_revised else 42
+                            stage = "round_2_debate" if is_revised else "round_1_debate"
+                            yield {"type": "methodology_chunk", "analysis_id": analysis_id, "content": content, "progress": progress, "stage": stage}
+                    elif node_name in ("analyze_results", "analyze_results_r1", "analyze_results_r2"):
+                        content = updates.get("results_analysis") or updates.get("draft_results")
+                        if content:
+                            is_revised = "results_analysis" in updates
+                            progress = 76 if is_revised else 48
+                            stage = "round_2_debate" if is_revised else "round_1_debate"
+                            yield {"type": "results_chunk", "analysis_id": analysis_id, "content": content, "progress": progress, "stage": stage}
+                    elif node_name in ("analyze_context", "analyze_context_r1", "analyze_context_r2"):
+                        content = updates.get("context_analysis") or updates.get("draft_context")
+                        if content:
+                            is_revised = "context_analysis" in updates
+                            progress = 84 if is_revised else 54
+                            stage = "round_2_debate" if is_revised else "round_1_debate"
+                            yield {"type": "contextualization_chunk", "analysis_id": analysis_id, "content": content, "progress": progress, "stage": stage}
 
             # Final validation: check if analysis succeeded or failed
             if full_state.get("final_report"):
@@ -96,11 +172,17 @@ class OrchestratorAgent(BaseAgent):
                     "metadata": {
                         "analysis_timestamp": self._get_timestamp(),
                         "analysis_confidence": 0.9,
-                        "model_used": "gemini-1.5-pro"
+                        "model_used": settings.gemini_model,
+                        "provenance": full_state.get("node_provenance", []),
+                        "tool_calls": full_state.get("tool_calls", []),
+                        "enrichment": full_state.get("enrichment_data", {})
                     },
                     "field": full_state.get("detected_field"),
-                    "paper_info": full_state.get("parsed_content", {}).get("metadata", {})
+                    "paper_info": full_state.get("parsed_content", {}).get("metadata", {}),
+                    "enrichment": full_state.get("enrichment_data", {})
                 }
+
+
                 
                 yield {
                     "type": "complete",
@@ -124,7 +206,7 @@ class OrchestratorAgent(BaseAgent):
                 }
                 
         except Exception as e:
-            logger.error(f"Critical error in LangGraph analysis: {str(e)}")
+            logger.error(f"Critical error in LangGraph analysis: {str(e)}", exc_info=True)
             yield {
                 "type": "error",
                 "analysis_id": analysis_id,

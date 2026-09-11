@@ -15,9 +15,10 @@ from app.config import settings
 
 
 class AnalysisManager:
-    def __init__(self):
-        self.analyses_dir = os.path.join(settings.upload_dir, "analyses")
-        self.temp_dir = os.path.join(settings.upload_dir, "temp")
+    def __init__(self, base_dir: Optional[str] = None):
+        upload_dir = base_dir or settings.upload_dir
+        self.analyses_dir = os.path.join(upload_dir, "analyses")
+        self.temp_dir = os.path.join(upload_dir, "temp")
         self._ensure_directories()
     
     def _ensure_directories(self):
@@ -81,6 +82,19 @@ class AnalysisManager:
         
         with open(metadata_path, 'r', encoding='utf-8') as f:
             return json.load(f)
+    
+    def update_analysis_status(self, analysis_id: str, status: str) -> bool:
+        """Update the status of an analysis in its metadata.json"""
+        metadata = self.get_analysis_metadata(analysis_id)
+        if not metadata:
+            return False
+        if "analysis_info" not in metadata:
+            metadata["analysis_info"] = {}
+        metadata["analysis_info"]["status"] = status
+        if status == "completed":
+            metadata["analysis_info"]["completed_at"] = datetime.now(timezone.utc).isoformat()
+        self.save_analysis_metadata(analysis_id, metadata)
+        return True
     
     def get_analysis_result(self, analysis_id: str, result_type: str) -> Optional[Dict[str, Any]]:
         """Get analysis result by type"""

@@ -933,16 +933,16 @@ const AnalysisPage: React.FC<AnalysisPageProps> = () => {
                         className="flex-1 border border-slate-200 rounded-xl px-5 py-3 text-sm focus-ring bg-slate-50 text-slate-800 placeholder-slate-400 disabled:opacity-50 font-medium"
                         aria-label="Chat input"
                       />
-                    <button
-                      type="submit"
-                      disabled={isChatLoading || !chatInput.trim() || analysisStatus === 'processing' || analysisStatus === 'queued'}
-                      className="bg-primary-600 hover:bg-primary-700 text-white rounded-xl p-3 transition-all shadow-soft disabled:opacity-50 disabled:cursor-not-allowed focus-ring"
-                      aria-label="Send message"
-                    >
-                      <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                      </svg>
-                    </button>
+                      <button
+                        type="submit"
+                        disabled={isChatLoading || !chatInput.trim() || analysisStatus === 'processing' || analysisStatus === 'queued'}
+                        className="bg-primary-600 hover:bg-primary-700 text-white rounded-xl p-3 transition-all shadow-soft disabled:opacity-50 disabled:cursor-not-allowed focus-ring"
+                        aria-label="Send message"
+                      >
+                        <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                        </svg>
+                      </button>
                     </div>
                   </form>
                 </div>

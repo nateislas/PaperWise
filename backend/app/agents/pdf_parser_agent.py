@@ -1,6 +1,6 @@
 import fitz  # PyMuPDF
 from typing import Dict, List, Any, Optional
-from langchain.schema import Document
+from langchain_core.documents import Document
 import logging
 import os
 from datetime import datetime
@@ -49,65 +49,96 @@ Provide clean, well-structured content that can be used by other analysis agents
             
             logger.info(f"Parsing PDF: {file_path}")
             
-            # Check for LlamaParse (High quality agentic parsing)
+            # Check for LiteParse (High-speed local Rust/PDFium markdown parsing)
             documents = []
             text_content = ""
-            if hasattr(settings, 'llama_cloud_api_key') and settings.llama_cloud_api_key:
-                try:
-                    logger.info("🚀 Using LlamaParse for high-quality extraction")
-                    from llama_parse import LlamaParse
-                    
-                    parser = LlamaParse(
-                        api_key=settings.llama_cloud_api_key,
-                        result_type="markdown",
-                        verbose=True,
-                        language="en",
-                    )
-                    
-                    # load_data returns a list of langchain/llama-index Document objects
-                    # We'll use it to get the full markdown content
-                    llama_docs = parser.load_data(file_path)
-                    if llama_docs:
-                        text_content = "\n\n".join([doc.text for doc in llama_docs])
-                        logger.info(f"✅ LlamaParse extracted {len(text_content)} characters")
-                except Exception as lp_err:
-                    logger.warning(f"⚠️ LlamaParse failed, falling back to PyMuPDF: {lp_err}")
+            used_engine = "pymupdf"
+            liteparse_res = None
 
-            # Open the PDF for PyMuPDF (always used for figures and as fallback for text)
+            if getattr(settings, "enable_liteparse", True):
+                try:
+                    logger.info("🚀 Using LiteParse for local high-speed markdown extraction")
+                    from liteparse import LiteParse
+
+                    ocr_requested = getattr(settings, "liteparse_ocr_enabled", True)
+                    tessdata_candidates = [
+                        os.environ.get("TESSDATA_PREFIX"),
+                        "/usr/share/tesseract-ocr/5/tessdata",
+                        "/usr/share/tessdata",
+                        "/opt/homebrew/share/tessdata",
+                        "/usr/local/share/tessdata",
+                        os.path.expanduser("~/.tesseract-rs/tessdata"),
+                    ]
+                    tessdata_dir = next((p for p in tessdata_candidates if p and os.path.isdir(p)), None)
+
+                    try:
+                        lp = LiteParse(
+                            output_format="markdown",
+                            ocr_enabled=ocr_requested,
+                            tessdata_path=tessdata_dir,
+                            extract_links=True,
+                        )
+                        liteparse_res = lp.parse(file_path)
+                    except Exception as ocr_parse_err:
+                        if ocr_requested:
+                            logger.warning(f"⚠️ LiteParse OCR failed ({ocr_parse_err}), falling back to native extraction without OCR")
+                            lp_fast = LiteParse(
+                                output_format="markdown",
+                                ocr_enabled=False,
+                                extract_links=True,
+                            )
+                            liteparse_res = lp_fast.parse(file_path)
+                        else:
+                            raise ocr_parse_err
+
+                    if liteparse_res and liteparse_res.pages:
+                        used_engine = "liteparse"
+                        page_texts = []
+                        for page in liteparse_res.pages:
+                            # Prefer markdown formatting; fall back to plain text
+                            p_text = page.markdown if (hasattr(page, "markdown") and page.markdown) else page.text
+                            page_texts.append(f"--- Page {page.page_num} ---\n{p_text}")
+                        text_content = "\n\n".join(page_texts)
+                        logger.info(f"✅ LiteParse extracted {len(liteparse_res.pages)} pages ({len(text_content)} chars)")
+                except Exception as lp_err:
+                    logger.warning(f"⚠️ LiteParse extraction failed, falling back to PyMuPDF: {lp_err}")
+
+            # Open the PDF with PyMuPDF (used for figures, structured tables, and text fallback)
             doc = fitz.open(file_path)
-            
-            # Extract metadata
-            metadata = self._extract_metadata(doc)
-            
-            # If LlamaParse didn't get text, use PyMuPDF
-            if not text_content:
-                text_content = self._extract_text(doc)
-            
-            # Extract tables (PyMuPDF - LlamaParse markdown includes tables, but we keep this for structured data)
-            tables = self._extract_tables(doc)
-            
-            # Extract figures (PyMuPDF - always use this for saving PNG assets)
-            figures = self._extract_figures(doc, file_path)
-            
-            # Create document chunks for LangChain agents
-            documents = self._create_documents(text_content, metadata)
-            
-            # Close the document
-            doc.close()
-            
-            logger.info(f"Successfully parsed PDF. Created {len(documents)} document chunks.")
-            
-            return {
-                "status": "success",
-                "documents": documents,
-                "metadata": metadata,
-                "parsed_content": {
-                    "text_content": text_content,
-                    "tables": tables,
-                    "figures": figures,
-                    "metadata": metadata
+            try:
+                # If LiteParse didn't extract text, use PyMuPDF fallback
+                if not text_content:
+                    logger.info("📄 Using PyMuPDF text extraction fallback")
+                    text_content = self._extract_text(doc)
+
+                # Extract metadata (leveraging markdown headings if available)
+                metadata = self._extract_metadata(doc, text_content=text_content)
+                metadata["parser_engine"] = used_engine
+
+                # Extract tables (PyMuPDF structured tables)
+                tables = self._extract_tables(doc)
+
+                # Extract figures (PyMuPDF - always used for saving PNG assets)
+                figures = self._extract_figures(doc, file_path)
+
+                # Create document chunks for LangChain agents
+                documents = self._create_documents(text_content, metadata)
+
+                logger.info(f"Successfully parsed PDF via {used_engine}. Created {len(documents)} document chunks.")
+
+                return {
+                    "status": "success",
+                    "documents": documents,
+                    "metadata": metadata,
+                    "parsed_content": {
+                        "text_content": text_content,
+                        "tables": tables,
+                        "figures": figures,
+                        "metadata": metadata
+                    }
                 }
-            }
+            finally:
+                doc.close()
             
         except Exception as e:
             logger.error(f"Error parsing PDF {file_path}: {str(e)}")
@@ -116,7 +147,7 @@ Provide clean, well-structured content that can be used by other analysis agents
                 "error": f"Failed to parse PDF: {str(e)}"
             }
     
-    def _extract_metadata(self, doc) -> Dict[str, Any]:
+    def _extract_metadata(self, doc, text_content: Optional[str] = None) -> Dict[str, Any]:
         """Extract metadata from the PDF"""
         try:
             metadata = doc.metadata
@@ -133,6 +164,15 @@ Provide clean, well-structured content that can be used by other analysis agents
                 "parsed_at": datetime.now().isoformat()
             }
             
+            # If basic metadata title is missing or generic, check markdown heading
+            if (basic_metadata["title"] in ("Unknown", "", "Untitled") or len(basic_metadata["title"].strip()) < 3) and text_content:
+                title_match = re.search(r'^#\s+([^\n]+)', text_content, re.MULTILINE)
+                if title_match:
+                    extracted_title = title_match.group(1).strip()
+                    if len(extracted_title) > 3 and not extracted_title.lower().startswith("table"):
+                        basic_metadata["title"] = extracted_title
+                        logger.info(f"Markdown heading title extracted: '{extracted_title}'")
+
             # Log the basic metadata for debugging
             logger.info(f"Basic metadata extracted - Title: '{basic_metadata['title']}', Author: '{basic_metadata['author']}'")
             
@@ -222,8 +262,10 @@ Rules:
 
 JSON:"""
             
-            # Call LLM to extract metadata
-            response = self._call_llm([{"role": "user", "content": prompt}])
+            # Call LLM synchronously to extract metadata
+            from langchain_core.messages import HumanMessage
+            res = self.llm.invoke([HumanMessage(content=prompt)])
+            response = res.content if hasattr(res, 'content') else str(res)
             
             if not response:
                 return {"title": "Unknown", "author": "Unknown"}

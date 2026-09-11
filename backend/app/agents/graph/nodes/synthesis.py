@@ -1,4 +1,6 @@
 import logging
+import time
+from datetime import datetime, timezone
 from typing import Dict, Any
 from langchain_google_genai import ChatGoogleGenerativeAI
 from app.config import settings
@@ -19,8 +21,10 @@ async def synthesis_node(state: PaperAnalysisState) -> Dict[str, Any]:
             - final_report (AnalysisReport): The structured Pydantic report object (on success).
             - status_updates (List[Dict[str, Any]]): Final status update (on success).
             - errors (List[str]): Error message (on failure).
+            - node_provenance (List[Dict[str, Any]]): Provenance entry.
     """
     logger.info("🧪 Node: Final Synthesis")
+    start_time = time.time()
     
     llm = ChatGoogleGenerativeAI(
         model=settings.gemini_model,
@@ -28,19 +32,25 @@ async def synthesis_node(state: PaperAnalysisState) -> Dict[str, Any]:
         temperature=settings.gemini_temperature
     ).with_structured_output(AnalysisReport)
     
-    paper_info = state["parsed_content"].get("metadata", {})
-    query_text = f"USER QUERY: {state['user_query']}" if state["user_query"] else ""
+    paper_info = state["parsed_content"].get("metadata", {}) if state.get("parsed_content") else {}
+    query_text = f"USER QUERY: {state['user_query']}" if state.get("user_query") else ""
+    
+    # Safe retrieval of expert analyses with descriptive fallbacks if skipped or failed
+    methodology = state.get("methodology_analysis") or "Methodology analysis not generated or skipped."
+    results = state.get("results_analysis") or "Results verification not generated, skipped, or not applicable."
+    context = state.get("context_analysis") or "Contextualization not generated or skipped."
     
     prompt_text = SYNTHESIS_PROMPT.format(
-        methodology=state["methodology_analysis"],
-        results=state["results_analysis"],
-        context=state["context_analysis"],
+        methodology=methodology,
+        results=results,
+        context=context,
         paper_info=str(paper_info),
         query_text=query_text
     )
     
     try:
         report = await llm.ainvoke(prompt_text)
+        elapsed = time.time() - start_time
         
         return {
             "final_report": report,
@@ -48,12 +58,34 @@ async def synthesis_node(state: PaperAnalysisState) -> Dict[str, Any]:
                 "type": "status",
                 "message": "Comprehensive report finalized.",
                 "progress": 100
+            }],
+            "node_provenance": [{
+                "node": "synthesize",
+                "elapsed_seconds": elapsed,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "status": "success",
+                "metadata": {
+                    "model": settings.gemini_model,
+                    "prompt_char_length": len(prompt_text),
+                    "report_summary_char_length": len(report.executive_summary) if report else 0
+                }
             }]
         }
     except Exception as e:
-        # Broad catch is justified to ensure any LLM failure in this terminal node
-        # is captured and reported without crashing the entire graph worker.
-        logger.error(f"Synthesis failed: {e}")
+        elapsed = time.time() - start_time
+        error_msg = f"Synthesis failed: {str(e)}"
+        logger.error(error_msg)
         return {
-            "errors": [f"Synthesis failed: {str(e)}"]
+            "errors": [error_msg],
+            "node_provenance": [{
+                "node": "synthesize",
+                "elapsed_seconds": elapsed,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "status": "error",
+                "metadata": {
+                    "model": settings.gemini_model,
+                    "error": error_msg
+                }
+            }]
         }
+
