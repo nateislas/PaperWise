@@ -45,13 +45,11 @@ def analyze_job(self, job: Dict[str, Any]) -> Dict[str, Any]:
 
     if not file_path:
         set_state(job.get("job_id", "unknown"), state="error", stage="failed", error="missing_file_path")
-        self.update_state(state="FAILURE", meta={"error": "missing_file_path"})
         raise RuntimeError("missing_file_path")
 
     file_path = os.path.abspath(file_path)
     if not os.path.exists(file_path):
         set_state(job.get("job_id", "unknown"), state="error", stage="failed", error="file_not_found")
-        self.update_state(state="FAILURE", meta={"error": "file_not_found"})
         raise FileNotFoundError(file_path)
 
     try:
@@ -191,11 +189,11 @@ def analyze_job(self, job: Dict[str, Any]) -> Dict[str, Any]:
         
         return {"analysis_id": analysis_id}
     except Exception as e:
-        # Let Celery capture the exception type and message
-        set_state(job.get("job_id", "unknown"), state="error", stage="failed", error=type(e).__name__)
-        publish_update(job.get("job_id", "unknown"), {"type": "error", "error": type(e).__name__})
-        self.update_state(state="FAILURE", meta={"error": type(e).__name__})
-        
+        logger.error(f"Task analyze_job failed for job {job.get('job_id')}: {e}", exc_info=True)
+        set_state(job.get("job_id", "unknown"), state="error", stage="failed", error=str(e))
+        publish_update(job.get("job_id", "unknown"), {"type": "error", "error": str(e)})
+        # Re-raising allows Celery to record standard FAILURE state and exception cleanly
+        # without corrupting Celery's result payload.
         raise
 
 

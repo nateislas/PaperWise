@@ -8,6 +8,7 @@ import json
 from app.agents.base_agent import BaseAgent, agent
 from app.agents.graph.builder import analysis_graph
 from app.agents.graph.state import PaperAnalysisState
+from app.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -205,7 +206,7 @@ class OrchestratorAgent(BaseAgent):
                 }
                 
         except Exception as e:
-            logger.error(f"Critical error in LangGraph analysis: {str(e)}")
+            logger.error(f"Critical error in LangGraph analysis: {str(e)}", exc_info=True)
             yield {
                 "type": "error",
                 "analysis_id": analysis_id,
