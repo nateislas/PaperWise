@@ -46,12 +46,16 @@ async def parse_pdf_node(state: PaperAnalysisState) -> Dict[str, Any]:
                 }]
             }
         
+        engine = result.get("metadata", {}).get("parser_engine", "liteparse")
+        pages_count = result.get("metadata", {}).get("pages", 0)
+        chunks_count = len(result["documents"])
+
         return {
             "documents": result["documents"],
             "parsed_content": result["parsed_content"],
             "status_updates": [{
                 "type": "status",
-                "message": f"PDF parsed successfully. Created {len(result['documents'])} chunks.",
+                "message": f"PDF parsed via {engine} ({pages_count} pages, {chunks_count} chunks) in {elapsed:.2f}s.",
                 "progress": 20
             }],
             "node_provenance": [{
@@ -60,8 +64,12 @@ async def parse_pdf_node(state: PaperAnalysisState) -> Dict[str, Any]:
                 "timestamp": datetime.now(timezone.utc).isoformat(),
                 "status": "success",
                 "metadata": {
-                    "chunks_count": len(result["documents"]),
-                    "file_size": result["parsed_content"].get("metadata", {}).get("file_size", 0)
+                    "engine": engine,
+                    "pages_count": pages_count,
+                    "chunks_count": chunks_count,
+                    "file_size": result["parsed_content"].get("metadata", {}).get("file_size", 0),
+                    "tables_count": len(result["parsed_content"].get("tables", [])),
+                    "figures_count": len(result["parsed_content"].get("figures", []))
                 }
             }]
         }

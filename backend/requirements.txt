@@ -26,4 +26,5 @@ redis>=5.0.1
 pageindex
 exa-py>=1.0.0
 semanticscholar>=0.8.0
+liteparse>=2.14.4
 

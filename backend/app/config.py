@@ -30,6 +30,10 @@ class Settings(BaseSettings):
     llama_cloud_project: str = "PaperWise"
     llama_cloud_org_id: Optional[str] = None
 
+    # LiteParse Configuration (Local Rust/PDFium parser)
+    enable_liteparse: bool = True
+    liteparse_ocr_enabled: bool = True
+
 
     # Performance & Streaming Configuration
     enable_streaming: bool = True
