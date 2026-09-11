@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Dict, List, Any, Optional, AsyncGenerator
-from langchain.schema import Document
-from langchain.schema.messages import HumanMessage, SystemMessage, BaseMessage
+from langchain_core.documents import Document
+from langchain_core.messages import HumanMessage, SystemMessage, BaseMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
 import logging
 import asyncio
@@ -81,28 +81,14 @@ class BaseAgent(ABC):
             yield f"Error in {self.name} analysis: {str(e)}"
     
     def _prepare_content_for_analysis(self, documents: List[Document], query: Optional[str] = None) -> str:
-        """Prepare content for analysis with smart chunking"""
+        """Prepare content for analysis by combining document chunks without truncation"""
         if not documents:
             return ""
         
         # Combine all document content
-        content_parts = []
-        for doc in documents:
-            content_parts.append(doc.page_content)
-        
-        combined_content = "\n\n".join(content_parts)
-        
-        # If content is too long, truncate intelligently
-        max_content_length = 32000  # Leave room for system prompt and response
-        if len(combined_content) > max_content_length:
-            half_length = max_content_length // 2
-            combined_content = (
-                combined_content[:half_length] + 
-                "\n\n[Content truncated for analysis...]\n\n" + 
-                combined_content[-half_length:]
-            )
-        
-        return combined_content
+        content_parts = [doc.page_content for doc in documents]
+        return "\n\n".join(content_parts)
+
     
     def _create_messages(self, content: str, query: Optional[str] = None) -> List[BaseMessage]:
         """Create messages for the LangChain LLM"""

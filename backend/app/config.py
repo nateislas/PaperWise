@@ -20,10 +20,16 @@ class Settings(BaseSettings):
     # PageIndex Configuration
     pageindex_api_key: Optional[str] = None
     
+    # Search & External Context Configuration
+    enable_external_enrichment: bool = False
+    semantic_scholar_api_key: Optional[str] = None
+    exa_api_key: Optional[str] = None
+    
     # LlamaCloud Configuration (LlamaParse & Managed Index)
     llama_cloud_api_key: Optional[str] = None
     llama_cloud_project: str = "PaperWise"
     llama_cloud_org_id: Optional[str] = None
+
 
     # Performance & Streaming Configuration
     enable_streaming: bool = True

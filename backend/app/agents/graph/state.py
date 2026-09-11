@@ -97,7 +97,12 @@ class PaperAnalysisState(TypedDict):
     detected_field: str
     field_info: FieldClassification
     
-    # Agent Outputs (Accumulated)
+    # Agent Draft Outputs (Round 1)
+    draft_methodology: str
+    draft_results: str
+    draft_context: str
+    
+    # Agent Final Outputs (Round 2 Accumulated)
     methodology_analysis: str
     results_analysis: str
     context_analysis: str
@@ -108,3 +113,12 @@ class PaperAnalysisState(TypedDict):
     # Control/Status
     status_updates: Annotated[List[Dict[str, Any]], operator.add]
     errors: Annotated[List[str], operator.add]
+    
+    # Provenance & Telemetry
+    node_provenance: Annotated[List[Dict[str, Any]], operator.add]
+    tool_calls: Annotated[List[Dict[str, Any]], operator.add]
+    
+    # External Context & Search Enrichment
+    enrichment_data: Optional[Dict[str, Any]]
+
+

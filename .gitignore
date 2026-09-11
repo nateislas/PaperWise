@@ -322,3 +322,7 @@ public
 # Temporary folders
 tmp/
 temp/
+
+# Dev Docs
+dev_docs/
+

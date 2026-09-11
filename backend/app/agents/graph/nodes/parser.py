@@ -1,5 +1,7 @@
 import logging
 import asyncio
+import time
+from datetime import datetime, timezone
 from typing import Dict, Any, List
 from app.agents.pdf_parser_agent import PDFParserAgent
 from app.agents.graph.state import PaperAnalysisState
@@ -19,25 +21,63 @@ async def parse_pdf_node(state: PaperAnalysisState) -> Dict[str, Any]:
             - parsed_content (Dict[str, Any]): Detailed parsed content (on success).
             - status_updates (List[Dict[str, Any]]): Status update for the UI.
             - errors (List[str]): Error message (on failure).
+            - node_provenance (List[Dict[str, Any]]): Provenance entry.
     """
     logger.info("📄 Node: Parsing PDF")
+    start_time = time.time()
     
-    parser = PDFParserAgent()
-    # Wrap sync call in to_thread to avoid blocking the event loop
-    result = await asyncio.to_thread(parser.parse_pdf, state["file_path"])
-    
-    if result["status"] == "error":
+    try:
+        parser = PDFParserAgent()
+        # Wrap sync call in to_thread to avoid blocking the event loop
+        result = await asyncio.to_thread(parser.parse_pdf, state["file_path"])
+        elapsed = time.time() - start_time
+        
+        if result["status"] == "error":
+            error_msg = f"Failed to parse PDF: {result.get('error')}"
+            return {
+                "errors": [error_msg],
+                "status_updates": [{"type": "error", "message": "PDF parsing failed"}],
+                "node_provenance": [{
+                    "node": "parse_pdf",
+                    "elapsed_seconds": elapsed,
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "status": "failed",
+                    "metadata": {"error": error_msg}
+                }]
+            }
+        
         return {
-            "errors": [f"Failed to parse PDF: {result.get('error')}"],
-            "status_updates": [{"type": "error", "message": "PDF parsing failed"}]
+            "documents": result["documents"],
+            "parsed_content": result["parsed_content"],
+            "status_updates": [{
+                "type": "status",
+                "message": f"PDF parsed successfully. Created {len(result['documents'])} chunks.",
+                "progress": 20
+            }],
+            "node_provenance": [{
+                "node": "parse_pdf",
+                "elapsed_seconds": elapsed,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "status": "success",
+                "metadata": {
+                    "chunks_count": len(result["documents"]),
+                    "file_size": result["parsed_content"].get("metadata", {}).get("file_size", 0)
+                }
+            }]
         }
-    
-    return {
-        "documents": result["documents"],
-        "parsed_content": result["parsed_content"],
-        "status_updates": [{
-            "type": "status",
-            "message": f"PDF parsed successfully. Created {len(result['documents'])} chunks.",
-            "progress": 20
-        }]
-    }
+    except Exception as e:
+        elapsed = time.time() - start_time
+        error_msg = f"Exception during PDF parsing: {str(e)}"
+        logger.error(error_msg)
+        return {
+            "errors": [error_msg],
+            "status_updates": [{"type": "error", "message": "PDF parsing failed"}],
+            "node_provenance": [{
+                "node": "parse_pdf",
+                "elapsed_seconds": elapsed,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "status": "error",
+                "metadata": {"error": error_msg}
+            }]
+        }
+

@@ -48,23 +48,31 @@ class OrchestratorAgent(BaseAgent):
             "documents": [],
             "detected_field": "generic",
             "field_info": None,
+            "draft_methodology": "",
+            "draft_results": "",
+            "draft_context": "",
             "methodology_analysis": "",
             "results_analysis": "",
             "context_analysis": "",
             "final_report": None,
             "status_updates": [],
-            "errors": []
+            "errors": [],
+            "node_provenance": [],
+            "tool_calls": [],
+            "enrichment_data": {}
         }
         
         try:
             # Single pass over graph execution to avoid double-processing and API costs
-            async for event in analysis_graph.astream(full_state, stream_mode="updates"):
+            # Configured with thread_id to allow MemorySaver checkpointer persistence
+            config = {"configurable": {"thread_id": analysis_id}}
+            async for event in analysis_graph.astream(full_state, config=config, stream_mode="updates"):
                 for node_name, updates in event.items():
                     logger.info(f"📍 Node completed: {node_name}")
                     
                     # Accumulate state locally to track progress for the final report
                     for key, val in updates.items():
-                        if key in ["status_updates", "errors"]:
+                        if key in ["status_updates", "errors", "node_provenance", "tool_calls"]:
                             full_state[key].extend(val)
                         else:
                             full_state[key] = val
@@ -78,12 +86,21 @@ class OrchestratorAgent(BaseAgent):
                             }
                     
                     # Yield specific chunks for UI compatibility (backward compatibility)
-                    if node_name == "analyze_methodology" and "methodology_analysis" in updates:
-                        yield {"type": "methodology_chunk", "analysis_id": analysis_id, "content": updates["methodology_analysis"], "progress": 50}
-                    elif node_name == "analyze_results" and "results_analysis" in updates:
-                        yield {"type": "results_chunk", "analysis_id": analysis_id, "content": updates["results_analysis"], "progress": 70}
-                    elif node_name == "analyze_context" and "context_analysis" in updates:
-                        yield {"type": "contextualization_chunk", "analysis_id": analysis_id, "content": updates["context_analysis"], "progress": 85}
+                    if node_name in ("analyze_methodology", "analyze_methodology_r1", "analyze_methodology_r2"):
+                        content = updates.get("methodology_analysis") or updates.get("draft_methodology")
+                        if content:
+                            progress = 65 if "methodology_analysis" in updates else 40
+                            yield {"type": "methodology_chunk", "analysis_id": analysis_id, "content": content, "progress": progress}
+                    elif node_name in ("analyze_results", "analyze_results_r1", "analyze_results_r2"):
+                        content = updates.get("results_analysis") or updates.get("draft_results")
+                        if content:
+                            progress = 75 if "results_analysis" in updates else 45
+                            yield {"type": "results_chunk", "analysis_id": analysis_id, "content": content, "progress": progress}
+                    elif node_name in ("analyze_context", "analyze_context_r1", "analyze_context_r2"):
+                        content = updates.get("context_analysis") or updates.get("draft_context")
+                        if content:
+                            progress = 85 if "context_analysis" in updates else 50
+                            yield {"type": "contextualization_chunk", "analysis_id": analysis_id, "content": content, "progress": progress}
 
             # Final validation: check if analysis succeeded or failed
             if full_state.get("final_report"):
@@ -96,11 +113,17 @@ class OrchestratorAgent(BaseAgent):
                     "metadata": {
                         "analysis_timestamp": self._get_timestamp(),
                         "analysis_confidence": 0.9,
-                        "model_used": "gemini-1.5-pro"
+                        "model_used": settings.gemini_model,
+                        "provenance": full_state.get("node_provenance", []),
+                        "tool_calls": full_state.get("tool_calls", []),
+                        "enrichment": full_state.get("enrichment_data", {})
                     },
                     "field": full_state.get("detected_field"),
-                    "paper_info": full_state.get("parsed_content", {}).get("metadata", {})
+                    "paper_info": full_state.get("parsed_content", {}).get("metadata", {}),
+                    "enrichment": full_state.get("enrichment_data", {})
                 }
+
+
                 
                 yield {
                     "type": "complete",

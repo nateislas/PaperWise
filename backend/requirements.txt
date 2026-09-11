@@ -8,6 +8,7 @@ langchain-google-genai>=0.2.0
 langchain-community>=0.3.0
 langgraph>=0.2.0
 chromadb>=0.4.0
+llama-index>=0.10.0
 llama-parse>=0.4.0
 llama-index-core>=0.10.0
 llama-index-llms-google-genai>=0.1.0
@@ -23,3 +24,6 @@ httptools>=0.6.1
 celery>=5.3.6
 redis>=5.0.1
 pageindex
+exa-py>=1.0.0
+semanticscholar>=0.8.0
+

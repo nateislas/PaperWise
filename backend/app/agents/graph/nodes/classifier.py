@@ -1,4 +1,6 @@
 import logging
+import time
+from datetime import datetime, timezone
 from typing import Dict, Any
 from langchain_google_genai import ChatGoogleGenerativeAI
 from app.config import settings
@@ -20,15 +22,25 @@ async def field_classifier_node(state: PaperAnalysisState) -> Dict[str, Any]:
             - field_info (FieldClassification): Structured classification details (on success).
             - status_updates (List[Dict[str, Any]]): Status update for the UI (on success).
             - errors (List[str]): Error messages (on failure).
+            - node_provenance (List[Dict[str, Any]]): Provenance entry.
     """
     logger.info("🔍 Node: Classifying Field")
+    start_time = time.time()
     
     # Defensive check for documents
     if not state.get("documents"):
         logger.warning("No documents found in state for classification.")
+        elapsed = time.time() - start_time
         return {
             "detected_field": "generic",
-            "errors": ["No documents available for field classification."]
+            "errors": ["No documents available for field classification."],
+            "node_provenance": [{
+                "node": "classify_field",
+                "elapsed_seconds": elapsed,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "status": "failed",
+                "metadata": {"error": "No documents available"}
+            }]
         }
     
     llm = ChatGoogleGenerativeAI(
@@ -46,6 +58,7 @@ async def field_classifier_node(state: PaperAnalysisState) -> Dict[str, Any]:
             {"role": "user", "content": f"Analyze this paper text and classify it:\n\n{sample_text}"}
         ])
         
+        elapsed = time.time() - start_time
         return {
             "detected_field": classification.field,
             "field_info": classification,
@@ -53,13 +66,36 @@ async def field_classifier_node(state: PaperAnalysisState) -> Dict[str, Any]:
                 "type": "status",
                 "message": f"Detected: {classification.field} ({classification.subfield})",
                 "progress": 30
+            }],
+            "node_provenance": [{
+                "node": "classify_field",
+                "elapsed_seconds": elapsed,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "status": "success",
+                "metadata": {
+                    "model": settings.gemini_model,
+                    "field": classification.field,
+                    "subfield": classification.subfield,
+                    "confidence": classification.confidence
+                }
             }]
         }
     except Exception as e:
-        # Broad catch is justified here because any LLM or network error should be handled 
-        # gracefully by falling back to 'generic' and logging the error.
-        logger.error(f"Field classification failed: {e}")
+        elapsed = time.time() - start_time
+        error_msg = f"Field classification failed: {str(e)}"
+        logger.error(error_msg)
         return {
             "detected_field": "generic",
-            "errors": [f"Classification failed: {str(e)}"]
+            "errors": [error_msg],
+            "node_provenance": [{
+                "node": "classify_field",
+                "elapsed_seconds": elapsed,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "status": "error",
+                "metadata": {
+                    "model": settings.gemini_model,
+                    "error": error_msg
+                }
+            }]
         }
+
