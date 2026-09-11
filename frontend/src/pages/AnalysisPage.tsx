@@ -307,7 +307,7 @@ const AnalysisPage: React.FC<AnalysisPageProps> = () => {
           metadata: {
             analysis_timestamp: metadata.completed_at,
             analysis_confidence: 0.85, // Default confidence
-            model_used: metadata.analysis_info?.model || "gemini-2.5-flash"
+            model_used: metadata.analysis_info?.model || "gemini-3.5-flash"
           },
           paper_info: metadata.paper_info
         });

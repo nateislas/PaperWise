@@ -14,8 +14,8 @@ class Settings(BaseSettings):
     # Gemini API Configuration
     gemini_api_key: Optional[str] = None
     gemini_base_url: str = "https://generativelanguage.googleapis.com/v1beta/openai/"
-    gemini_model: str = "gemini-2.5-flash"
-    gemini_temperature: float = 0.1
+    gemini_model: str = "gemini-3.5-flash"
+    gemini_temperature: float = 1.0
 
     # PageIndex Configuration
     pageindex_api_key: Optional[str] = None

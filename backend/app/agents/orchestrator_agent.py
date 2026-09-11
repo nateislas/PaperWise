@@ -179,7 +179,8 @@ class OrchestratorAgent(BaseAgent):
                     },
                     "field": full_state.get("detected_field"),
                     "paper_info": full_state.get("parsed_content", {}).get("metadata", {}),
-                    "enrichment": full_state.get("enrichment_data", {})
+                    "enrichment": full_state.get("enrichment_data", {}),
+                    "parsed_content": full_state.get("parsed_content", {})
                 }
 
 

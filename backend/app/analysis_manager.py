@@ -7,11 +7,14 @@ import os
 import json
 import shutil
 import uuid
+import logging
 from datetime import datetime, timezone
 from typing import Dict, List, Optional, Any
 from pathlib import Path
 
 from app.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 class AnalysisManager:
@@ -96,6 +99,60 @@ class AnalysisManager:
         self.save_analysis_metadata(analysis_id, metadata)
         return True
     
+    def save_parsed_content(self, analysis_id: str, parsed_content: Dict[str, Any]) -> str:
+        """Save parsed content (LiteParse text, chunks, tables, figures) to JSON file"""
+        analysis_dir = os.path.join(self.analyses_dir, analysis_id)
+        os.makedirs(analysis_dir, exist_ok=True)
+        content_path = os.path.join(analysis_dir, "parsed_content.json")
+        
+        serializable_content = dict(parsed_content)
+        if "chunks" in serializable_content:
+            serialized_chunks = []
+            for chunk in serializable_content["chunks"]:
+                if hasattr(chunk, "page_content"):
+                    serialized_chunks.append({
+                        "text": chunk.page_content,
+                        "metadata": getattr(chunk, "metadata", {})
+                    })
+                elif isinstance(chunk, dict):
+                    serialized_chunks.append(chunk)
+                else:
+                    serialized_chunks.append({"text": str(chunk), "metadata": {}})
+            serializable_content["chunks"] = serialized_chunks
+
+        with open(content_path, 'w', encoding='utf-8') as f:
+            json.dump(serializable_content, f, indent=2, ensure_ascii=False)
+            
+        return content_path
+
+    def get_parsed_content(self, analysis_id: str) -> Optional[Dict[str, Any]]:
+        """Get parsed content for an analysis, re-parsing on-the-fly if missing"""
+        analysis_dir = os.path.join(self.analyses_dir, analysis_id)
+        content_path = os.path.join(analysis_dir, "parsed_content.json")
+        
+        if os.path.exists(content_path):
+            try:
+                with open(content_path, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+            except Exception as e:
+                logger.warning(f"Failed to read parsed_content.json for {analysis_id}: {e}")
+        
+        # Fallback: if paper.pdf exists, parse it with PDFParserAgent and cache to disk
+        paper_path = os.path.join(analysis_dir, "paper.pdf")
+        if os.path.exists(paper_path):
+            try:
+                from app.agents.pdf_parser_agent import PDFParserAgent
+                parser = PDFParserAgent()
+                parse_result = parser.parse_pdf(paper_path)
+                if parse_result.get("status") == "success" and "parsed_content" in parse_result:
+                    parsed_content = parse_result["parsed_content"]
+                    self.save_parsed_content(analysis_id, parsed_content)
+                    return parsed_content
+            except Exception as e:
+                logger.error(f"Fallback parsing failed for {analysis_id}: {e}")
+
+        return None
+
     def get_analysis_result(self, analysis_id: str, result_type: str) -> Optional[Dict[str, Any]]:
         """Get analysis result by type"""
         result_path = os.path.join(self.analyses_dir, analysis_id, "results", f"{result_type}.json")
@@ -268,6 +325,8 @@ class AnalysisManager:
             return os.path.join(analysis_dir, "figures")
         elif file_type == "annotations":
             return os.path.join(analysis_dir, "annotations.json")
+        elif file_type == "parsed_content":
+            return os.path.join(analysis_dir, "parsed_content.json")
         
         return None
 

@@ -144,8 +144,8 @@ It will:
 |----------|-------------|---------|
 | `GEMINI_API_KEY | Your Gemini API key | **Required** |
 | `GEMINI_BASE_URL | Gemini base URL | `https://generativelanguage.googleapis.com/v1beta/openai/` |
-| `GEMINI_MODEL | Gemini model to use | `gemini-2.5-flash` |
-| `GEMINI_TEMPERATURE | Model temperature | `0.1` |
+| `GEMINI_MODEL` | Gemini model to use | `gemini-3.5-flash` |
+| `GEMINI_TEMPERATURE` | Model temperature | `1.0` |
 | `UPLOAD_DIR` | File upload directory | `uploads` |
 | `MAX_FILE_SIZE` | Maximum file size | `50MB` |
 | `CHUNK_SIZE` | Text chunk size | `1000` |

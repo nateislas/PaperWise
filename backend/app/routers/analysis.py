@@ -374,6 +374,8 @@ async def analyze_paper_stream(request: AnalysisRequest):
 
                             if target_analysis_id:
                                 analysis_manager.save_analysis_result(target_analysis_id, "comprehensive", analysis_data)
+                                if "parsed_content" in analysis_data and analysis_data["parsed_content"]:
+                                    analysis_manager.save_parsed_content(target_analysis_id, analysis_data["parsed_content"])
                                 analysis_manager.update_analysis_status(target_analysis_id, "completed")
                                 logger.info(f"💾 Saved completed streaming analysis to disk: {target_analysis_id}")
                         except Exception as save_err:
