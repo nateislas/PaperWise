@@ -63,6 +63,15 @@ class OrchestratorAgent(BaseAgent):
         }
         
         try:
+            # Yield immediate initial status so frontend receives feedback within milliseconds
+            yield {
+                "type": "status",
+                "stage": "parsing",
+                "analysis_id": analysis_id,
+                "message": "Extracting document structure & high-resolution figures...",
+                "progress": 5
+            }
+
             # Single pass over graph execution to avoid double-processing and API costs
             # Configured with thread_id to allow MemorySaver checkpointer persistence
             config = {"configurable": {"thread_id": analysis_id}}
@@ -85,22 +94,71 @@ class OrchestratorAgent(BaseAgent):
                                 **status
                             }
                     
+                    # Stage transitions & progress updates
+                    if node_name == "parse_pdf":
+                        yield {
+                            "type": "status",
+                            "stage": "classification",
+                            "analysis_id": analysis_id,
+                            "message": "Classifying research domain & calibrating evaluation rubrics...",
+                            "progress": 25
+                        }
+                    elif node_name == "classify_field":
+                        field_name = updates.get("detected_field", full_state.get("detected_field", "generic"))
+                        yield {
+                            "type": "status",
+                            "stage": "round_1_debate",
+                            "analysis_id": analysis_id,
+                            "message": f"Domain: {field_name.title()}. Round 1: Specialized agents drafting initial analyses...",
+                            "progress": 35
+                        }
+                    elif node_name == "debate_sync":
+                        yield {
+                            "type": "status",
+                            "stage": "cross_critique",
+                            "analysis_id": analysis_id,
+                            "message": "Synchronizing expert drafts for cross-peer critique & debate...",
+                            "progress": 60
+                        }
+                    elif node_name == "synthesize":
+                        yield {
+                            "type": "status",
+                            "stage": "synthesis",
+                            "analysis_id": analysis_id,
+                            "message": "Synthesizing comprehensive structured research report...",
+                            "progress": 90
+                        }
+                    elif node_name == "enrich_context":
+                        yield {
+                            "type": "status",
+                            "stage": "enrichment",
+                            "analysis_id": analysis_id,
+                            "message": "Finalizing analysis report and citations...",
+                            "progress": 96
+                        }
+
                     # Yield specific chunks for UI compatibility (backward compatibility)
                     if node_name in ("analyze_methodology", "analyze_methodology_r1", "analyze_methodology_r2"):
                         content = updates.get("methodology_analysis") or updates.get("draft_methodology")
                         if content:
-                            progress = 65 if "methodology_analysis" in updates else 40
-                            yield {"type": "methodology_chunk", "analysis_id": analysis_id, "content": content, "progress": progress}
+                            is_revised = "methodology_analysis" in updates
+                            progress = 70 if is_revised else 42
+                            stage = "round_2_debate" if is_revised else "round_1_debate"
+                            yield {"type": "methodology_chunk", "analysis_id": analysis_id, "content": content, "progress": progress, "stage": stage}
                     elif node_name in ("analyze_results", "analyze_results_r1", "analyze_results_r2"):
                         content = updates.get("results_analysis") or updates.get("draft_results")
                         if content:
-                            progress = 75 if "results_analysis" in updates else 45
-                            yield {"type": "results_chunk", "analysis_id": analysis_id, "content": content, "progress": progress}
+                            is_revised = "results_analysis" in updates
+                            progress = 76 if is_revised else 48
+                            stage = "round_2_debate" if is_revised else "round_1_debate"
+                            yield {"type": "results_chunk", "analysis_id": analysis_id, "content": content, "progress": progress, "stage": stage}
                     elif node_name in ("analyze_context", "analyze_context_r1", "analyze_context_r2"):
                         content = updates.get("context_analysis") or updates.get("draft_context")
                         if content:
-                            progress = 85 if "context_analysis" in updates else 50
-                            yield {"type": "contextualization_chunk", "analysis_id": analysis_id, "content": content, "progress": progress}
+                            is_revised = "context_analysis" in updates
+                            progress = 84 if is_revised else 54
+                            stage = "round_2_debate" if is_revised else "round_1_debate"
+                            yield {"type": "contextualization_chunk", "analysis_id": analysis_id, "content": content, "progress": progress, "stage": stage}
 
             # Final validation: check if analysis succeeded or failed
             if full_state.get("final_report"):

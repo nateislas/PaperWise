@@ -54,22 +54,28 @@ Provide clean, well-structured content that can be used by other analysis agents
             text_content = ""
             if hasattr(settings, 'llama_cloud_api_key') and settings.llama_cloud_api_key:
                 try:
-                    logger.info("🚀 Using LlamaParse for high-quality extraction")
+                    logger.info("🚀 Using LlamaParse for high-quality extraction (with 12s timeout)")
                     from llama_parse import LlamaParse
+                    import concurrent.futures
                     
-                    parser = LlamaParse(
-                        api_key=settings.llama_cloud_api_key,
-                        result_type="markdown",
-                        verbose=True,
-                        language="en",
-                    )
-                    
-                    # load_data returns a list of langchain/llama-index Document objects
-                    # We'll use it to get the full markdown content
-                    llama_docs = parser.load_data(file_path)
+                    def _run_llama_parse():
+                        parser = LlamaParse(
+                            api_key=settings.llama_cloud_api_key,
+                            result_type="markdown",
+                            verbose=False,
+                            language="en",
+                        )
+                        return parser.load_data(file_path)
+
+                    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+                        future = executor.submit(_run_llama_parse)
+                        llama_docs = future.result(timeout=12)
+
                     if llama_docs:
                         text_content = "\n\n".join([doc.text for doc in llama_docs])
                         logger.info(f"✅ LlamaParse extracted {len(text_content)} characters")
+                except concurrent.futures.TimeoutError:
+                    logger.warning("⏱️ LlamaParse timed out after 12s, falling back to high-speed PyMuPDF extraction")
                 except Exception as lp_err:
                     logger.warning(f"⚠️ LlamaParse failed, falling back to PyMuPDF: {lp_err}")
 
@@ -222,8 +228,10 @@ Rules:
 
 JSON:"""
             
-            # Call LLM to extract metadata
-            response = self._call_llm([{"role": "user", "content": prompt}])
+            # Call LLM synchronously to extract metadata
+            from langchain_core.messages import HumanMessage
+            res = self.llm.invoke([HumanMessage(content=prompt)])
+            response = res.content if hasattr(res, 'content') else str(res)
             
             if not response:
                 return {"title": "Unknown", "author": "Unknown"}
