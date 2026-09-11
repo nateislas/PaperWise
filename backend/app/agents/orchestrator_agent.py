@@ -179,11 +179,16 @@ class OrchestratorAgent(BaseAgent):
                     },
                     "field": full_state.get("detected_field"),
                     "paper_info": full_state.get("parsed_content", {}).get("metadata", {}),
-                    "enrichment": full_state.get("enrichment_data", {}),
-                    "parsed_content": full_state.get("parsed_content", {})
+                    "enrichment": full_state.get("enrichment_data", {})
                 }
 
-
+                parsed_content = full_state.get("parsed_content", {})
+                if parsed_content and analysis_id:
+                    try:
+                        from app.analysis_manager import analysis_manager
+                        analysis_manager.save_parsed_content(analysis_id, parsed_content)
+                    except Exception as pe:
+                        logger.warning(f"Could not directly save parsed_content for {analysis_id}: {pe}")
                 
                 yield {
                     "type": "complete",
@@ -191,6 +196,7 @@ class OrchestratorAgent(BaseAgent):
                     "status": "success",
                     "message": "Analysis completed successfully",
                     "analysis": final_output,
+                    "_parsed_content": parsed_content,
                     "progress": 100,
                     "elapsed_time": time.time() - start_time
                 }

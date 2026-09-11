@@ -33,7 +33,8 @@ Guidelines:
 class KnowledgeChatAgent:
     """
     Expert Agent for exploring and querying a research paper using a LangGraph ReAct Deep Agent.
-    Operates 100% locally with Google Gemini 2.5 Flash and multi-source research tools.
+    Operates with local artifact storage and retrieval, and uses the configured Google Gemini model
+    (defaulting to settings.gemini_model) via the external Gemini API for reasoning and inference.
     """
     
     def __init__(self, analysis_id: str):
@@ -45,8 +46,10 @@ class KnowledgeChatAgent:
             timeout=settings.request_timeout
         )
 
-    def _load_data(self):
-        parsed_content = analysis_manager.get_parsed_content(self.analysis_id) or {}
+    async def _load_data(self):
+        parsed_content = await analysis_manager.get_parsed_content_async(self.analysis_id)
+        if not parsed_content:
+            parsed_content = analysis_manager.get_parsed_content(self.analysis_id) or {}
         comprehensive = analysis_manager.get_analysis_result(self.analysis_id, "comprehensive") or {}
         metadata = analysis_manager.get_analysis_metadata(self.analysis_id) or {}
         return parsed_content, comprehensive, metadata
@@ -96,8 +99,13 @@ class KnowledgeChatAgent:
                 if score > 0 or not tokens:
                     scored.append((score, c["page"], c_text))
             
+            if not scored:
+                if page_number is not None:
+                    return f"No text passages found on Page {page_number} matching query: '{query}'."
+                return f"No text passages found matching query: '{query}'."
+            
             scored.sort(key=lambda x: x[0], reverse=True)
-            top_matches = scored[:5] if scored else normalized_chunks[:3]
+            top_matches = scored[:5]
             
             output = []
             for score, page, text in top_matches:
@@ -252,7 +260,7 @@ class KnowledgeChatAgent:
             history = []
 
         try:
-            parsed_content, comprehensive, metadata = self._load_data()
+            parsed_content, comprehensive, metadata = await self._load_data()
             paper_title = metadata.get("paper_info", {}).get("title", "Research Paper")
             tools = self._build_tools(parsed_content, comprehensive, metadata)
 
@@ -386,15 +394,6 @@ class KnowledgeChatAgent:
         for pattern, label in section_patterns:
             if pattern.lower() in answer_text.lower():
                 sources.add(label)
-                
-        # 3. If tools were called with specific pages or sections, include them
-        for m in messages:
-            # Check ToolMessages for returned Page headers
-            content = self._extract_text_content(getattr(m, "content", ""))
-            if content:
-                tool_pages = re.findall(r'\[Page\s+(\d+)\]', content, re.IGNORECASE)
-                for p in tool_pages[:3]: # Cap to top 3 referenced pages
-                    sources.add(f"Page {p}")
         
         # Natural sorting: pages first, then report sections
         def sort_key(s: str):

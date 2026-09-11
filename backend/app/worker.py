@@ -76,6 +76,7 @@ def analyze_job(self, job: Dict[str, Any]) -> Dict[str, Any]:
                         "analysis_id": chunk.get("analysis_id"),
                         "status": chunk.get("status"),
                         "comprehensive_analysis": chunk.get("analysis"),
+                        "_parsed_content": chunk.get("_parsed_content")
                     }
                     publish_update(job["job_id"], {"type": "complete"})
                 elif ctype == "error":
@@ -87,17 +88,21 @@ def analyze_job(self, job: Dict[str, Any]) -> Dict[str, Any]:
         # Save results using analysis manager
         analysis_id = job["job_id"]
         
-        # Save comprehensive analysis
+        # Save comprehensive analysis (ensure parsed_content is excluded)
         if "comprehensive_analysis" in result:
+            comp_analysis = result["comprehensive_analysis"]
+            if isinstance(comp_analysis, dict):
+                comp_analysis.pop("parsed_content", None)
             analysis_manager.save_analysis_result(
                 analysis_id, 
                 "comprehensive", 
-                result["comprehensive_analysis"]
+                comp_analysis
             )
-            if "parsed_content" in result["comprehensive_analysis"] and result["comprehensive_analysis"]["parsed_content"]:
+            parsed_content = result.get("_parsed_content")
+            if parsed_content:
                 analysis_manager.save_parsed_content(
                     analysis_id,
-                    result["comprehensive_analysis"]["parsed_content"]
+                    parsed_content
                 )
         
         # Update metadata with completion info and extracted paper metadata

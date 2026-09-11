@@ -99,6 +99,14 @@ def test_knowledge_chat_agent_tools():
     assert "Page 7" in filtered_res
     assert "Page 3" not in filtered_res
     
+    # Regression coverage: unmatched query
+    unmatched_res = tool_map["retrieve_paper_chunks"].invoke({"query": "quantum superstring non-existent"})
+    assert "No text passages found matching query" in unmatched_res
+    
+    # Regression coverage: absent page number
+    absent_page_res = tool_map["retrieve_paper_chunks"].invoke({"query": "affinity", "page_number": 999})
+    assert "No text passages found on Page 999" in absent_page_res
+
     # 2. Test lookup_analysis_report
     method_res = tool_map["lookup_analysis_report"].invoke({"section": "methodology"})
     assert "Rigorous isothermal calorimetry" in method_res
@@ -125,6 +133,45 @@ def test_knowledge_chat_agent_tools():
 
 
 @pytest.mark.asyncio
+async def test_analysis_manager_get_parsed_content_async_concurrent(tmp_path):
+    """Test get_parsed_content_async handles concurrent cache misses with lock and cache recheck."""
+    manager = AnalysisManager(str(tmp_path))
+    analysis_id = "test-concurrent-parse"
+    manager.create_analysis_directory(analysis_id, "paper.pdf")
+    paper_path = os.path.join(manager.analyses_dir, analysis_id, "paper.pdf")
+    with open(paper_path, "wb") as f:
+        f.write(b"%PDF-1.4 dummy")
+
+    parse_call_count = 0
+
+    def mock_parse_pdf(path):
+        nonlocal parse_call_count
+        parse_call_count += 1
+        return {
+            "status": "success",
+            "parsed_content": {
+                "text_content": "Parsed async content",
+                "chunks": [{"text": "Chunk 1", "page": 1}]
+            }
+        }
+
+    with patch("app.agents.pdf_parser_agent.PDFParserAgent.parse_pdf", side_effect=mock_parse_pdf):
+        import asyncio
+        results = await asyncio.gather(
+            manager.get_parsed_content_async(analysis_id),
+            manager.get_parsed_content_async(analysis_id),
+            manager.get_parsed_content_async(analysis_id)
+        )
+        
+        for r in results:
+            assert r is not None
+            assert r["text_content"] == "Parsed async content"
+        
+        # Lock + cache recheck ensures parsing is only invoked ONCE across concurrent requests
+        assert parse_call_count == 1
+
+
+@pytest.mark.asyncio
 async def test_knowledge_chat_agent_chat():
     """Test KnowledgeChatAgent.chat invoking agent and extracting verified citations."""
     agent = KnowledgeChatAgent("test-id")
@@ -138,12 +185,13 @@ async def test_knowledge_chat_agent_chat():
     mock_metadata = {"paper_info": {"title": "Test Title"}}
     
     # Mock data loading
-    agent._load_data = MagicMock(return_value=(mock_parsed, mock_comprehensive, mock_metadata))
+    agent._load_data = AsyncMock(return_value=(mock_parsed, mock_comprehensive, mock_metadata))
     
     # Mock create_react_agent
     mock_agent_runnable = MagicMock()
     mock_agent_runnable.ainvoke = AsyncMock(return_value={
         "messages": [
+            MagicMock(content="--- [Page 99] ---\nUnreferenced tool passage"),
             AIMessage(content="According to the authors [Page 4], the binding affinity was confirmed. However, our Methodological Evaluation notes concerns about sample sizes [Page 8].")
         ]
     })
@@ -162,6 +210,8 @@ async def test_knowledge_chat_agent_chat():
         assert "Page 4" in sources
         assert "Page 8" in sources
         assert "Methodology Evaluation" in sources
+        # Verify unreferenced tool output pages like Page 99 are NOT included in sources
+        assert "Page 99" not in sources
 
     # Test with Gemini structured content block format (list of dicts with extras/signature)
     mock_agent_runnable.ainvoke = AsyncMock(return_value={

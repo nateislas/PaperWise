@@ -4,7 +4,7 @@
 > **Branch**: `feature/langgraph-deep-agent-chat`  
 > **Default LLM**: `gemini-3.5-flash` (`temperature: 1.0`)  
 > **Target**: Replace deprecated LlamaCloud Managed RAG with a Self-Contained LangGraph Deep Agent  
-> **Affects**: [`knowledge_chat_agent.py`](file:///Users/nathanielislas/CursorProjects/PaperWise/backend/app/agents/knowledge_chat_agent.py), [`chat.py`](file:///Users/nathanielislas/CursorProjects/PaperWise/backend/app/routers/chat.py), [`worker.py`](file:///Users/nathanielislas/CursorProjects/PaperWise/backend/app/worker.py), [`analysis_manager.py`](file:///Users/nathanielislas/CursorProjects/PaperWise/backend/app/analysis_manager.py)
+> **Affects**: [`knowledge_chat_agent.py`](../backend/app/agents/knowledge_chat_agent.py), [`chat.py`](../backend/app/routers/chat.py), [`worker.py`](../backend/app/worker.py), [`analysis_manager.py`](../backend/app/analysis_manager.py)
 
 ---
 
@@ -35,7 +35,7 @@ We evaluated four potential architectures:
 |---|---|---|---|---|
 | **Multi-Source Reasoning** | 🟢 **High**: Dynamically queries paper text, analysis report, tables, and metadata | 🟡 **Medium**: Retrieves generic vector chunks only | 🟡 **Medium**: Document vector search only | 🔴 **Low**: Dumps text into prompt without targeted tools |
 | **Citation Precision** | 🟢 **High**: Tool calls return verified page numbers & section titles (`[Page X]`) | 🟡 **Medium**: Similarity scores from vector store | 🟡 **Medium**: Source nodes from index | 🔴 **Low**: Prone to hallucinating page numbers |
-| **Cloud Independence** | 🟢 **100% Local**: No external cloud service needed | 🟢 **100% Local** | 🟢 **100% Local** | 🟢 **Local** |
+| **Cloud Independence** | 🟢 **Local Storage & Retrieval**: Self-contained local artifacts; uses Google Gemini cloud inference via `google_api_key` | 🟢 **100% Local** | 🟢 **100% Local** | 🟢 **Local** |
 | **Architectural Cohesion** | 🟢 **100% LangGraph/LangChain**: Same framework as pipeline | 🟡 **Partial**: LangChain chains | 🔴 **Split**: Retains LlamaIndex alongside LangGraph | 🟡 **Minimal**: Single LLM invocation |
 | **Response Latency** | 🟢 **Fast**: Focused chunks + report sections (~1-2s) | 🟢 **Fast**: Single retrieval step (~1-2s) | 🟡 **Moderate**: Local vector query (~2-3s) | 🔴 **Slower**: Massive context processing (~3-5s) |
 | **Implementation Complexity** | 🟢 **Low/Moderate**: Built with `create_react_agent` & tools | 🟢 **Low**: Standard `create_retrieval_chain` | 🟡 **Moderate**: Managing local vector indices | 🟢 **Very Low**: Basic prompt formatting |
@@ -108,11 +108,11 @@ backend/uploads/analyses/{analysis_id}/
 ```
 
 ### Persistence Implementation
-In [`analysis_manager.py`](file:///Users/nathanielislas/CursorProjects/PaperWise/backend/app/analysis_manager.py):
+In [`analysis_manager.py`](../backend/app/analysis_manager.py):
 - `save_parsed_content(analysis_id, parsed_content)`: Writes chunks, markdown, tables, and figure info to `parsed_content.json`.
 - `get_parsed_content(analysis_id)`: Reads `parsed_content.json`, with automatic fallback to on-the-fly parsing if the cached file is missing.
 
-In [`orchestrator_agent.py`](file:///Users/nathanielislas/CursorProjects/PaperWise/backend/app/agents/orchestrator_agent.py), [`worker.py`](file:///Users/nathanielislas/CursorProjects/PaperWise/backend/app/worker.py), and [`routers/analysis.py`](file:///Users/nathanielislas/CursorProjects/PaperWise/backend/app/routers/analysis.py):
+In [`orchestrator_agent.py`](../backend/app/agents/orchestrator_agent.py), [`worker.py`](../backend/app/worker.py), and [`routers/analysis.py`](../backend/app/routers/analysis.py):
 - `parsed_content` is automatically saved upon completion of analysis.
 - The Celery worker no longer makes external cloud uploads or calls LlamaCloud.
 
@@ -120,7 +120,7 @@ In [`orchestrator_agent.py`](file:///Users/nathanielislas/CursorProjects/PaperWi
 
 ## 5. API Contract & Frontend Compatibility
 
-The frontend ([`AnalysisPage.tsx`](file:///Users/nathanielislas/CursorProjects/PaperWise/frontend/src/pages/AnalysisPage.tsx#L358)) connects seamlessly to the chat endpoint:
+The frontend ([`AnalysisPage.tsx`](../frontend/src/pages/AnalysisPage.tsx#L358)) connects seamlessly to the chat endpoint:
 
 ### Request: `POST /api/v1/analyses/{analysis_id}/chat`
 ```json

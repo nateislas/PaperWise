@@ -38,6 +38,8 @@ async def test_orchestrator_completion_uses_settings_model():
         # Verify model_used was populated correctly from settings.gemini_model without NameError
         assert analysis["metadata"]["model_used"] == settings.gemini_model
         assert analysis["enrichment"]["citations"] == 42
+        assert "parsed_content" not in analysis
+        assert "_parsed_content" in complete_chunk
 
 
 def test_worker_analyze_job_error_handling_does_not_corrupt_celery_state():

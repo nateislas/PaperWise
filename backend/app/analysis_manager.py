@@ -8,6 +8,8 @@ import json
 import shutil
 import uuid
 import logging
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from typing import Dict, List, Optional, Any
 from pathlib import Path
@@ -23,6 +25,8 @@ class AnalysisManager:
         self.analyses_dir = os.path.join(upload_dir, "analyses")
         self.temp_dir = os.path.join(upload_dir, "temp")
         self._ensure_directories()
+        self._parse_locks: Dict[str, asyncio.Lock] = {}
+        self._parse_executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="pdf-parse")
     
     def _ensure_directories(self):
         """Ensure required directories exist"""
@@ -124,6 +128,55 @@ class AnalysisManager:
             json.dump(serializable_content, f, indent=2, ensure_ascii=False)
             
         return content_path
+
+    def _get_parse_lock(self, analysis_id: str) -> asyncio.Lock:
+        if analysis_id not in self._parse_locks:
+            self._parse_locks[analysis_id] = asyncio.Lock()
+        return self._parse_locks[analysis_id]
+
+    async def get_parsed_content_async(self, analysis_id: str) -> Optional[Dict[str, Any]]:
+        """Get parsed content asynchronously, coordinating concurrent misses with a per-analysis lock."""
+        analysis_dir = os.path.join(self.analyses_dir, analysis_id)
+        content_path = os.path.join(analysis_dir, "parsed_content.json")
+        
+        # 1. Quick initial cache check
+        if os.path.exists(content_path):
+            try:
+                with open(content_path, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+            except Exception as e:
+                logger.warning(f"Failed to read parsed_content.json for {analysis_id}: {e}")
+        
+        # 2. Coordinate concurrent misses with per-analysis lock
+        lock = self._get_parse_lock(analysis_id)
+        async with lock:
+            # Recheck cache after acquiring the lock so only one request parses each PDF
+            if os.path.exists(content_path):
+                try:
+                    with open(content_path, 'r', encoding='utf-8') as f:
+                        return json.load(f)
+                except Exception as e:
+                    logger.warning(f"Failed to read parsed_content.json after lock for {analysis_id}: {e}")
+            
+            # Fallback: if paper.pdf exists, parse in a bounded worker/thread to avoid blocking event loop
+            paper_path = os.path.join(analysis_dir, "paper.pdf")
+            if os.path.exists(paper_path):
+                def _do_parse():
+                    from app.agents.pdf_parser_agent import PDFParserAgent
+                    parser = PDFParserAgent()
+                    return parser.parse_pdf(paper_path)
+                
+                try:
+                    loop = asyncio.get_running_loop()
+                    parse_result = await loop.run_in_executor(self._parse_executor, _do_parse)
+                    if parse_result.get("status") == "success" and "parsed_content" in parse_result:
+                        parsed_content = parse_result["parsed_content"]
+                        self.save_parsed_content(analysis_id, parsed_content)
+                        return parsed_content
+                except Exception as e:
+                    logger.error(f"Fallback async parsing failed for {analysis_id}: {e}")
+
+        return None
 
     def get_parsed_content(self, analysis_id: str) -> Optional[Dict[str, Any]]:
         """Get parsed content for an analysis, re-parsing on-the-fly if missing"""
