@@ -8,7 +8,14 @@ RUN apt-get update && apt-get install -y \
     gcc \
     g++ \
     curl \
+    tesseract-ocr \
+    tesseract-ocr-eng \
     && rm -rf /var/lib/apt/lists/*
+
+# Set up tessdata path for LiteParse (tesseract-rs OCR)
+ENV TESSDATA_PREFIX=/usr/share/tesseract-ocr/5/tessdata
+RUN mkdir -p /root/.tesseract-rs/tessdata && \
+    ln -sf /usr/share/tesseract-ocr/5/tessdata/eng.traineddata /root/.tesseract-rs/tessdata/eng.traineddata 2>/dev/null || true
 
 # Copy requirements first for better caching
 COPY requirements.txt .

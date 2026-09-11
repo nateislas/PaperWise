@@ -60,12 +60,36 @@ Provide clean, well-structured content that can be used by other analysis agents
                     logger.info("🚀 Using LiteParse for local high-speed markdown extraction")
                     from liteparse import LiteParse
 
-                    lp = LiteParse(
-                        output_format="markdown",
-                        ocr_enabled=getattr(settings, "liteparse_ocr_enabled", True),
-                        extract_links=True,
-                    )
-                    liteparse_res = lp.parse(file_path)
+                    ocr_requested = getattr(settings, "liteparse_ocr_enabled", True)
+                    tessdata_candidates = [
+                        os.environ.get("TESSDATA_PREFIX"),
+                        "/usr/share/tesseract-ocr/5/tessdata",
+                        "/usr/share/tessdata",
+                        "/opt/homebrew/share/tessdata",
+                        "/usr/local/share/tessdata",
+                        os.path.expanduser("~/.tesseract-rs/tessdata"),
+                    ]
+                    tessdata_dir = next((p for p in tessdata_candidates if p and os.path.isdir(p)), None)
+
+                    try:
+                        lp = LiteParse(
+                            output_format="markdown",
+                            ocr_enabled=ocr_requested,
+                            tessdata_path=tessdata_dir,
+                            extract_links=True,
+                        )
+                        liteparse_res = lp.parse(file_path)
+                    except Exception as ocr_parse_err:
+                        if ocr_requested:
+                            logger.warning(f"⚠️ LiteParse OCR failed ({ocr_parse_err}), falling back to native extraction without OCR")
+                            lp_fast = LiteParse(
+                                output_format="markdown",
+                                ocr_enabled=False,
+                                extract_links=True,
+                            )
+                            liteparse_res = lp_fast.parse(file_path)
+                        else:
+                            raise ocr_parse_err
 
                     if liteparse_res and liteparse_res.pages:
                         used_engine = "liteparse"
