@@ -8,10 +8,10 @@ services:
     ports:
       - "8081:8000"
     environment:
-      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
       - GEMINI_MODEL=${GEMINI_MODEL:-gemini-2.5-flash}
       - GEMINI_TEMPERATURE=${GEMINI_TEMPERATURE:-0.1}
-      - PAGEINDEX_API_KEY=${PAGEINDEX_API_KEY}
+      - PAGEINDEX_API_KEY=${PAGEINDEX_API_KEY:-}
       - ENABLE_STREAMING=${ENABLE_STREAMING:-true}
       - STREAM_CHUNK_SIZE=${STREAM_CHUNK_SIZE:-100}
       - REQUEST_TIMEOUT=${REQUEST_TIMEOUT:-300}
@@ -44,10 +44,10 @@ services:
       - backend
       - redis
     environment:
-      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
       - GEMINI_MODEL=${GEMINI_MODEL:-gemini-2.5-flash}
       - GEMINI_TEMPERATURE=${GEMINI_TEMPERATURE:-0.1}
-      - PAGEINDEX_API_KEY=${PAGEINDEX_API_KEY}
+      - PAGEINDEX_API_KEY=${PAGEINDEX_API_KEY:-}
       - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
       - UPLOAD_DIR=${UPLOAD_DIR:-uploads}
       - CHROMA_PERSIST_DIRECTORY=${CHROMA_PERSIST_DIRECTORY:-./chroma_db}
