@@ -70,6 +70,19 @@ const HighlightComponent = ({
   );
 };
 
+const cleanChatText = (text: any): string => {
+  if (!text) return '';
+  if (typeof text !== 'string') return String(text);
+  const trimmed = text.trim();
+  if ((trimmed.startsWith('[{') || trimmed.startsWith('{')) && (trimmed.includes("'text':") || trimmed.includes('"text":'))) {
+    const match = trimmed.match(/['"]text['"]\s*:\s*(['"])(.*?)\1(?:\s*,\s*['"]extras|\s*})/s);
+    if (match && match[2]) {
+      return match[2].replace(/\\n/g, '\n').replace(/\\"/g, '"').replace(/\\'/g, "'");
+    }
+  }
+  return text;
+};
+
 interface SelectionTipProps {
   onAnnotate: (selection: any) => void;
   onChat: (selection: any) => void;
@@ -368,7 +381,7 @@ const AnalysisPage: React.FC<AnalysisPageProps> = () => {
       const data = await response.json();
       setChatMessages(prev => [...prev, {
         role: 'assistant',
-        content: data.answer,
+        content: cleanChatText(data.answer),
         sources: data.sources
       }]);
     } catch (err: any) {
@@ -856,7 +869,7 @@ const AnalysisPage: React.FC<AnalysisPageProps> = () => {
                               {msg.contextText}
                             </div>
                           )}
-                          <p className="whitespace-pre-wrap leading-relaxed font-medium">{msg.content}</p>
+                          <p className="whitespace-pre-wrap leading-relaxed font-medium">{cleanChatText(msg.content)}</p>
                           {msg.sources && msg.sources.length > 0 && (
                             <div className="mt-4 pt-3 border-t border-slate-100/20 flex flex-wrap items-center gap-2">
                               <span className="text-[10px] font-bold uppercase tracking-widest opacity-60">Sources:</span>

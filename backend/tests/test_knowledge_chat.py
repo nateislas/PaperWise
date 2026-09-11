@@ -163,6 +163,45 @@ async def test_knowledge_chat_agent_chat():
         assert "Page 8" in sources
         assert "Methodology Evaluation" in sources
 
+    # Test with Gemini structured content block format (list of dicts with extras/signature)
+    mock_agent_runnable.ainvoke = AsyncMock(return_value={
+        "messages": [
+            AIMessage(content=[
+                {
+                    "type": "text",
+                    "text": "The methodology is robust [Methodology Evaluation].",
+                    "extras": {"signature": "CtkCARFNMg9n09d5..."}
+                }
+            ])
+        ]
+    })
+    with patch("app.agents.knowledge_chat_agent.create_react_agent", return_value=mock_agent_runnable):
+        res = await agent.chat("Summarize methodology")
+        assert res["answer"] == "The methodology is robust [Methodology Evaluation]."
+        assert "extras" not in res["answer"]
+        assert "Methodology Evaluation" in res["sources"]
+
+
+def test_extract_text_content():
+    """Verify _extract_text_content handles all Gemini block formats cleanly."""
+    # 1. Plain string
+    assert KnowledgeChatAgent._extract_text_content("Simple string") == "Simple string"
+    
+    # 2. List of dicts (Gemini standard)
+    gemini_blocks = [
+        {"type": "text", "text": "Hello ", "extras": {"signature": "123"}},
+        {"type": "text", "text": "World!", "extras": {"signature": "456"}}
+    ]
+    assert KnowledgeChatAgent._extract_text_content(gemini_blocks) == "Hello World!"
+    
+    # 3. Stringified list representation
+    str_repr = "[{'type': 'text', 'text': 'The methodology is robust.', 'extras': {'signature': 'xyz'}}]"
+    assert KnowledgeChatAgent._extract_text_content(str_repr) == "The methodology is robust."
+    
+    # 4. None / Empty
+    assert KnowledgeChatAgent._extract_text_content(None) == ""
+    assert KnowledgeChatAgent._extract_text_content([]) == ""
+
 
 def test_chat_api_endpoint(tmp_path):
     """Test POST /api/v1/analyses/{analysis_id}/chat endpoint."""

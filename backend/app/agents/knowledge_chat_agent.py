@@ -237,7 +237,7 @@ class KnowledgeChatAgent:
 
         return [retrieve_paper_chunks, lookup_analysis_report, lookup_tables_and_figures, get_paper_metadata]
 
-    async def chat(self, message: str, history: List[Dict[str, str]]) -> Dict[str, Any]:
+    async def chat(self, message: str, history: Optional[List[Dict[str, str]]] = None) -> Dict[str, Any]:
         """
         Process a chat message using the LangGraph ReAct Deep Agent.
         
@@ -248,27 +248,43 @@ class KnowledgeChatAgent:
         Returns:
             Dict[str, Any]: {"answer": str, "sources": List[str]}
         """
+        if history is None:
+            history = []
+
         try:
             parsed_content, comprehensive, metadata = self._load_data()
             paper_title = metadata.get("paper_info", {}).get("title", "Research Paper")
-            
             tools = self._build_tools(parsed_content, comprehensive, metadata)
-            system_prompt = SYSTEM_PROMPT_TEMPLATE.format(paper_title=paper_title)
-            
-            # Create LangGraph ReAct Agent
-            agent = create_react_agent(self.llm, tools, prompt=system_prompt)
-            
+
+            prompt = (
+                f"You are the PaperWise Knowledge Research Assistant for the paper: '{paper_title}'. "
+                "You help researchers deeply understand, critique, and explore academic papers. You have access "
+                "to specialized tools to inspect the paper's exact text, peer review evaluation report, tables, figures, and metadata.\n\n"
+                "Guidelines:\n"
+                "1. Ground every claim using tool outputs. When citing paper text, cite the exact page like `[Page X]`.\n"
+                "2. When discussing methodology, limitations, evidence, or novelty, consult the pre-computed peer review report.\n"
+                "3. If tables or figures contain numerical results, consult the tables tool and present structured data.\n"
+                "4. Be objective, precise, and academically rigorous."
+            )
+
+            agent = create_react_agent(
+                model=self.llm,
+                tools=tools,
+                prompt=prompt
+            )
+
             # Assemble message history
             lang_messages = []
             for h in history[-8:]:
                 role = h.get("role")
-                content = h.get("content", "")
+                content = self._extract_text_content(h.get("content", ""))
                 if role == "user":
                     lang_messages.append(HumanMessage(content=content))
                 elif role == "assistant":
                     lang_messages.append(AIMessage(content=content))
             
-            lang_messages.append(HumanMessage(content=message))
+            clean_message = self._extract_text_content(message)
+            lang_messages.append(HumanMessage(content=clean_message))
             
             logger.info(f"🤖 Invoking LangGraph Deep Chat Agent for paper {self.analysis_id}")
             result = await agent.ainvoke({"messages": lang_messages})
@@ -278,8 +294,10 @@ class KnowledgeChatAgent:
             final_content = "I could not formulate an answer."
             for m in reversed(response_messages):
                 if isinstance(m, AIMessage) and m.content:
-                    final_content = m.content if isinstance(m.content, str) else str(m.content)
-                    break
+                    extracted = self._extract_text_content(m.content).strip()
+                    if extracted:
+                        final_content = extracted
+                        break
 
             # Extract citations from tool outputs and answer text
             sources = self._extract_sources(response_messages, final_content)
@@ -292,6 +310,57 @@ class KnowledgeChatAgent:
         except Exception as e:
             logger.error(f"Error in LangGraph KnowledgeChatAgent: {e}", exc_info=True)
             raise e
+
+    @staticmethod
+    def _extract_text_content(content: Any) -> str:
+        """Extract clean text string from strings, list of content blocks, dicts, or stringified reprs."""
+        if content is None:
+            return ""
+        if isinstance(content, list):
+            if not content:
+                return ""
+            parts = []
+            for item in content:
+                if isinstance(item, str):
+                    parts.append(item)
+                elif isinstance(item, dict):
+                    if "text" in item:
+                        parts.append(str(item["text"]))
+                    elif "content" in item:
+                        parts.append(str(item["content"]))
+                elif hasattr(item, "text"):
+                    parts.append(str(item.text))
+            return "".join(parts)
+        elif isinstance(content, dict):
+            if "text" in content:
+                return str(content["text"])
+            if "content" in content:
+                return str(content["content"])
+        
+        # If it's a string, check if it's a stringified list of dicts like:
+        # "[{'type': 'text', 'text': '...'}]"
+        if isinstance(content, str):
+            trimmed = content.strip()
+            if (trimmed.startswith("[{") or trimmed.startswith("{")) and ("'text':" in trimmed or '"text":' in trimmed):
+                try:
+                    import ast
+                    parsed = ast.literal_eval(trimmed)
+                    if isinstance(parsed, (list, dict)):
+                        extracted = KnowledgeChatAgent._extract_text_content(parsed)
+                        if extracted:
+                            return extracted
+                except Exception:
+                    pass
+                
+                # Regex fallback if ast.literal_eval fails (e.g. unescaped newlines or quotes)
+                match = re.search(r"['\"]text['\"]\s*:\s*(['\"])(.*?)\1(?:\s*,\s*['\"]extras|\s*})", trimmed, re.DOTALL)
+                if match:
+                    raw_text = match.group(2)
+                    return raw_text.replace('\\n', '\n').replace('\\"', '"').replace("\\'", "'")
+
+            return content
+            
+        return str(content)
 
     def _extract_sources(self, messages: List[Any], answer_text: str) -> List[str]:
         """Extract exact page citations and analysis sections for UI badges."""
@@ -321,8 +390,8 @@ class KnowledgeChatAgent:
         # 3. If tools were called with specific pages or sections, include them
         for m in messages:
             # Check ToolMessages for returned Page headers
-            content = getattr(m, "content", "")
-            if isinstance(content, str):
+            content = self._extract_text_content(getattr(m, "content", ""))
+            if content:
                 tool_pages = re.findall(r'\[Page\s+(\d+)\]', content, re.IGNORECASE)
                 for p in tool_pages[:3]: # Cap to top 3 referenced pages
                     sources.add(f"Page {p}")
