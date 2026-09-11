@@ -69,3 +69,25 @@ def test_worker_analyze_job_error_handling_does_not_corrupt_celery_state():
             # CRITICAL: self.update_state(state='FAILURE') MUST NOT be called because it corrupts Celery's Redis result backend
             failure_calls = [c for c in mock_update_state.call_args_list if c.kwargs.get("state") == "FAILURE"]
             assert len(failure_calls) == 0, f"update_state(state='FAILURE') should not be called, but was called: {failure_calls}"
+
+
+def test_analysis_manager_update_analysis_status(tmp_path):
+    """Verify AnalysisManager.update_analysis_status updates metadata.json with status and timestamp."""
+    from app.analysis_manager import AnalysisManager
+
+    manager = AnalysisManager(str(tmp_path))
+    analysis_id = "test-analysis-456"
+    init_meta = {
+        "analysis_id": analysis_id,
+        "analysis_info": {"status": "processing"}
+    }
+    manager.create_analysis_directory(analysis_id, "paper.pdf")
+    manager.save_analysis_metadata(analysis_id, init_meta)
+    
+    success = manager.update_analysis_status(analysis_id, "completed")
+    assert success is True
+    
+    updated = manager.get_analysis_metadata(analysis_id)
+    assert updated["analysis_info"]["status"] == "completed"
+    assert "completed_at" in updated["analysis_info"]
+
