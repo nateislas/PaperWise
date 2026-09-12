@@ -122,7 +122,7 @@ export function VerdictPanel({
         const parts = c.split(':');
         return {
           id: `concern-${index}`,
-          severity: index === 0 ? 'blocking' : 'material',
+          severity: 'material',
           title: parts[0]?.trim() || 'Methodology Concern',
           description: parts[1]?.trim() || c,
         };
@@ -130,11 +130,13 @@ export function VerdictPanel({
       const firstEvidence = Array.isArray(c.evidence) && c.evidence[0] ? c.evidence[0] : null;
       return {
         id: `concern-${c.rank !== undefined ? c.rank : index}`,
-        severity: (c.severity as 'blocking' | 'material' | 'minor') || (index === 0 ? 'blocking' : 'material'),
-        title: c.title || c.category || 'Methodology Concern',
+        severity: (c.severity as 'blocking' | 'material' | 'minor') || 'material',
+        title: c.title || (c.category ? `${c.category} Concern` : 'Methodology Concern'),
+        category: c.category,
         description: c.detail || c.description || String(c),
         page: c.page || firstEvidence?.page,
         section: c.section || firstEvidence?.section,
+        quote: c.quote || firstEvidence?.quote,
       };
     });
   }, [results.concerns, methEval, critReview]);
@@ -156,6 +158,7 @@ export function VerdictPanel({
 
   const scrollToSection = (id: string) => {
     const target = resolveReportSectionId(id) || id;
+    setCollapsedSections((prev) => ({ ...prev, [target]: false }));
     const el = document.getElementById(target);
     if (el) {
       el.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -321,7 +324,7 @@ export function VerdictPanel({
       <section id={REPORT_SECTIONS.OPEN_CONCERNS}>
         <ConcernList
           concerns={concerns}
-          onJumpToCitation={(c) => c.page && onJumpToPdfPage(c.page, c.description)}
+          onJumpToCitation={(c) => c.page && onJumpToPdfPage(c.page, c.quote || c.description)}
         />
       </section>
 

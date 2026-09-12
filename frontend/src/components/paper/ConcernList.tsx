@@ -12,6 +12,7 @@ export interface ConcernItem {
   category?: string;
   page?: number;
   section?: string;
+  quote?: string;
 }
 
 export function ConcernList({
@@ -58,10 +59,13 @@ export function ConcernList({
             className="rounded-xl border border-[--border-subtle] bg-[--surface] p-4 transition-colors hover:border-[--border-strong] shadow-xs"
           >
             <div className="flex items-start justify-between gap-3">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <Pill tone={getTone(c.severity)}>
                   {getDisplaySeverity(c.severity)}
                 </Pill>
+                {c.category && (
+                  <Pill tone="neutral">{c.category}</Pill>
+                )}
                 <h4 className="text-xs font-bold text-[--text-primary]">
                   {c.title}
                 </h4>
