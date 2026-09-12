@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from typing import Optional, List, Any
 from sqlalchemy import (
     String,
@@ -65,7 +65,7 @@ class Paper(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     visibility: Mapped[str] = mapped_column(String, nullable=False, default="private")
-    owner_user_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
+    owner_user_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     doi: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     arxiv_id: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     biorxiv_doi: Mapped[Optional[str]] = mapped_column(String, nullable=True)
@@ -74,7 +74,7 @@ class Paper(Base):
     authors: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
     venue: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     year: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    published_at: Mapped[Optional[datetime]] = mapped_column(Date, nullable=True)
+    published_at: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     abstract: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     source: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     source_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)

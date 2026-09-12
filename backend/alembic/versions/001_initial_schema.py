@@ -59,7 +59,7 @@ def upgrade() -> None:
         'papers',
         sa.Column('id', UUID(as_uuid=True), primary_key=True),
         sa.Column('visibility', sa.String(), nullable=False, server_default='private'),
-        sa.Column('owner_user_id', UUID(as_uuid=True), sa.ForeignKey('users.id', ondelete='CASCADE'), nullable=True),
+        sa.Column('owner_user_id', UUID(as_uuid=True), sa.ForeignKey('users.id', ondelete='SET NULL'), nullable=True),
         sa.Column('doi', sa.String(), nullable=True),
         sa.Column('arxiv_id', sa.String(), nullable=True),
         sa.Column('biorxiv_doi', sa.String(), nullable=True),
