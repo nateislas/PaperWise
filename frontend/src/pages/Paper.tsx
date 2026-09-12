@@ -347,7 +347,7 @@ export function Paper() {
             id: n.id,
             page: n.page,
             text: n.quote || n.text || '',
-            note: typeof n.comment === 'string' ? n.comment : (n.comment?.text || ''),
+            note: typeof n.comment === 'string' ? n.comment : ((n.comment as any)?.text || ''),
             position: n.position,
             content: { text: n.quote || n.text || '' },
             comment: typeof n.comment === 'string' ? { text: n.comment } : (n.comment || null),

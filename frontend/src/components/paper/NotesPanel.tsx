@@ -9,7 +9,7 @@ export interface NoteItem {
   page: number;
   timestamp?: number;
   quote?: string;
-  comment?: string;
+  comment?: any;
   color?: string;
   position?: any;
   createdAt?: string;
