@@ -98,6 +98,7 @@ export function Paper() {
   const [analysis, setAnalysis] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const pdfUrlRef = useRef<string | null>(null);
   const [notes, setNotes] = useState<NoteItem[]>([]);
   const [pdfScale, setPdfScale] = useState<number>(1.1);
   const [activeCitation, setActiveCitation] = useState<{
@@ -106,6 +107,16 @@ export function Paper() {
     query?: string;
   } | null>(null);
   const [chatInitialContext, setChatInitialContext] = useState<string | null>(null);
+
+  // Clean up PDF object URL on unmount
+  useEffect(() => {
+    return () => {
+      if (pdfUrlRef.current) {
+        URL.revokeObjectURL(pdfUrlRef.current);
+        pdfUrlRef.current = null;
+      }
+    };
+  }, []);
 
   // Resizable split ratio state (default 58%)
   const [splitRatio, setSplitRatio] = useState<number>(() => {
@@ -129,28 +140,47 @@ export function Paper() {
         const res = await fetch(apiUrl(`/api/v1/analyses/${analysisId}`));
         if (!res.ok) throw new Error('Failed to fetch paper analysis');
         const data = await res.json();
+
+        // If analysis is completed, fetch comprehensive results
+        const rawStatus = (data.analysis_info?.status || data.status || '').toLowerCase();
+        if (rawStatus === 'completed' || data.available_results?.includes('comprehensive')) {
+          try {
+            const compRes = await fetch(apiUrl(`/api/v1/analyses/${analysisId}/results/comprehensive`));
+            if (compRes.ok) {
+              data.results = await compRes.json();
+            }
+          } catch (e) {
+            console.error('Failed to load comprehensive results:', e);
+          }
+        }
         setAnalysis(data);
 
         // Fetch pdf blob
         const pdfRes = await fetch(apiUrl(`/api/v1/analyses/${analysisId}/paper`));
         if (pdfRes.ok) {
           const blob = await pdfRes.blob();
-          setPdfUrl(URL.createObjectURL(blob));
+          if (pdfUrlRef.current) {
+            URL.revokeObjectURL(pdfUrlRef.current);
+          }
+          const blobUrl = URL.createObjectURL(blob);
+          pdfUrlRef.current = blobUrl;
+          setPdfUrl(blobUrl);
         }
 
         // Fetch annotations
         const annotRes = await fetch(apiUrl(`/api/v1/analyses/${analysisId}/annotations`));
         if (annotRes.ok) {
-          const annots = await annotRes.json();
+          const rawAnnot = await annotRes.json();
+          const annotsList = Array.isArray(rawAnnot) ? rawAnnot : rawAnnot?.annotations || [];
           setNotes(
-            (annots || []).map((a: any, idx: number) => ({
+            annotsList.map((a: any, idx: number) => ({
               id: a.id || `note-${idx}`,
-              page: a.position?.pageNumber || a.page || 1,
-              quote: a.content?.text || a.quote,
-              comment: a.comment,
-              color: a.color || 'yellow',
+              page: a.page || a.position?.pageNumber || 1,
+              quote: a.quote || a.text || a.content?.text || '',
+              comment: typeof a.comment === 'object' && a.comment !== null ? a.comment?.text || '' : (a.comment || a.note || ''),
+              color: a.color || a.highlightColor || 'yellow',
               position: a.position,
-              createdAt: a.createdAt,
+              createdAt: a.createdAt || a.created_at,
             }))
           );
         }
@@ -168,26 +198,43 @@ export function Paper() {
   useEffect(() => {
     if (!analysisId) return;
 
+    const rawStatus = (analysis?.analysis_info?.status || analysis?.status || '').toLowerCase();
     const hasResults = Boolean(
       analysis?.results?.bottom_line ||
       analysis?.results?.methodological_evaluation ||
       analysis?.results?.critical_review?.major_concerns?.length
     );
-    const isFailed = analysis?.status === 'failed' || analysis?.job?.state === 'error';
-    if (hasResults || isFailed) return;
+    const isCompleted = rawStatus === 'completed' || rawStatus === 'ready';
+    const isFailed = rawStatus === 'failed' || rawStatus === 'error';
+
+    if ((isCompleted && hasResults) || isFailed) return;
 
     const interval = setInterval(async () => {
       try {
         const res = await fetch(apiUrl(`/api/v1/analyses/${analysisId}`));
         if (!res.ok) return;
         const data = await res.json();
+        const pollStatus = (data.analysis_info?.status || data.status || '').toLowerCase();
+        if (pollStatus === 'completed' || data.available_results?.includes('comprehensive')) {
+          try {
+            const compRes = await fetch(apiUrl(`/api/v1/analyses/${analysisId}/results/comprehensive`));
+            if (compRes.ok) {
+              data.results = await compRes.json();
+            }
+          } catch (e) {}
+        }
         setAnalysis(data);
 
-        if (!pdfUrl) {
+        if (!pdfUrlRef.current) {
           const pdfRes = await fetch(apiUrl(`/api/v1/analyses/${analysisId}/paper`));
           if (pdfRes.ok) {
             const blob = await pdfRes.blob();
-            setPdfUrl(URL.createObjectURL(blob));
+            if (pdfUrlRef.current) {
+              URL.revokeObjectURL(pdfUrlRef.current);
+            }
+            const blobUrl = URL.createObjectURL(blob);
+            pdfUrlRef.current = blobUrl;
+            setPdfUrl(blobUrl);
           }
         }
       } catch (err) {
@@ -196,7 +243,7 @@ export function Paper() {
     }, 2500);
 
     return () => clearInterval(interval);
-  }, [analysisId, analysis?.results, analysis?.status, analysis?.job?.state, pdfUrl]);
+  }, [analysisId, analysis?.results, analysis?.analysis_info?.status, analysis?.status]);
 
   // Tab change helper
   const handleTabChange = (tabId: string) => {
@@ -299,11 +346,15 @@ export function Paper() {
           annotations: updatedNotes.map((n) => ({
             id: n.id,
             page: n.page,
+            text: n.quote || n.text || '',
+            note: typeof n.comment === 'string' ? n.comment : (n.comment?.text || ''),
             position: n.position,
-            content: { text: n.quote },
-            comment: n.comment,
-            color: n.color,
+            content: { text: n.quote || n.text || '' },
+            comment: typeof n.comment === 'string' ? { text: n.comment } : (n.comment || null),
+            highlightColor: n.color || 'yellow',
+            color: n.color || 'yellow',
             createdAt: n.createdAt,
+            created_at: n.createdAt,
           })),
         }),
       });
@@ -333,11 +384,15 @@ export function Paper() {
           annotations: updatedNotes.map((n) => ({
             id: n.id,
             page: n.page,
+            text: n.quote || n.text || '',
+            note: typeof n.comment === 'string' ? n.comment : (n.comment?.text || ''),
             position: n.position,
-            content: { text: n.quote },
-            comment: n.comment,
-            color: n.color,
+            content: { text: n.quote || n.text || '' },
+            comment: typeof n.comment === 'string' ? { text: n.comment } : (n.comment || null),
+            highlightColor: n.color || 'yellow',
+            color: n.color || 'yellow',
             createdAt: n.createdAt,
+            created_at: n.createdAt,
           })),
         }),
       });
@@ -509,8 +564,36 @@ export function Paper() {
 
         {/* Drag Handle Divider */}
         <div
+          role="separator"
+          tabIndex={0}
+          aria-orientation="vertical"
+          aria-valuenow={Math.round(splitRatio)}
+          aria-valuemin={25}
+          aria-valuemax={75}
+          aria-label="Resize panel divider"
           onMouseDown={handleMouseDown}
-          className="w-1.5 hover:w-2 bg-[--border-subtle] hover:bg-[--accent] cursor-col-resize transition-all shrink-0 z-20"
+          onKeyDown={(e) => {
+            if (e.key === 'ArrowLeft') {
+              e.preventDefault();
+              setSplitRatio((prev) => {
+                const next = Math.max(25, prev - 2);
+                try { localStorage.setItem('pw.split', next.toFixed(1)); } catch (err) {}
+                return next;
+              });
+            } else if (e.key === 'ArrowRight') {
+              e.preventDefault();
+              setSplitRatio((prev) => {
+                const next = Math.min(75, prev + 2);
+                try { localStorage.setItem('pw.split', next.toFixed(1)); } catch (err) {}
+                return next;
+              });
+            } else if (e.key === 'Home') {
+              e.preventDefault();
+              setSplitRatio(58);
+              try { localStorage.setItem('pw.split', '58.0'); } catch (err) {}
+            }
+          }}
+          className="w-1.5 hover:w-2 focus:w-2 bg-[--border-subtle] hover:bg-[--accent] focus:bg-[--accent] focus:outline-none cursor-col-resize transition-all shrink-0 z-20"
         />
 
         {/* Right Pane: Workspace Panels */}
