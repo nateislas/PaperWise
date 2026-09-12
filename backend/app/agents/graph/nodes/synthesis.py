@@ -5,20 +5,21 @@ from typing import Dict, Any
 from langchain_google_genai import ChatGoogleGenerativeAI
 from app.config import settings
 from app.agents.graph.state import PaperAnalysisState, AnalysisReport
+from app.schemas.schema_v2 import AnalysisV2, rank_concerns, reconcile
 from app.agents.graph.prompts import SYNTHESIS_PROMPT
 
 logger = logging.getLogger(__name__)
 
 async def synthesis_node(state: PaperAnalysisState) -> Dict[str, Any]:
     """
-    Synthesizes expert analyses into a final structured report.
+    Synthesizes expert analyses into a final structured report using Rubric v2 (AnalysisV2).
     
     Args:
         state (PaperAnalysisState): The current graph state containing expert analysis strings.
         
     Returns:
         Dict[str, Any]: A dictionary containing:
-            - final_report (AnalysisReport): The structured Pydantic report object (on success).
+            - final_report (AnalysisV2): The structured Pydantic report object (on success).
             - status_updates (List[Dict[str, Any]]): Final status update (on success).
             - errors (List[str]): Error message (on failure).
             - node_provenance (List[Dict[str, Any]]): Provenance entry.
@@ -32,7 +33,7 @@ async def synthesis_node(state: PaperAnalysisState) -> Dict[str, Any]:
         google_api_key=settings.gemini_api_key,
         temperature=settings.gemini_temperature,
         thinking_level=thinking_level
-    ).with_structured_output(AnalysisReport)
+    ).with_structured_output(AnalysisV2)
     
     paper_info = state["parsed_content"].get("metadata", {}) if state.get("parsed_content") else {}
     query_text = f"USER QUERY: {state['user_query']}" if state.get("user_query") else ""
@@ -52,7 +53,11 @@ async def synthesis_node(state: PaperAnalysisState) -> Dict[str, Any]:
     
     try:
         report = await llm.ainvoke(prompt_text)
+        if isinstance(report, AnalysisV2):
+            report.concerns = rank_concerns(report.concerns)
+            report = reconcile(report)
         elapsed = time.time() - start_time
+        summary_len = len(getattr(report, "full_summary", None) or getattr(report, "executive_summary", "") or "")
         
         return {
             "final_report": report,
@@ -69,7 +74,7 @@ async def synthesis_node(state: PaperAnalysisState) -> Dict[str, Any]:
                 "metadata": {
                     "model": settings.gemini_model,
                     "prompt_char_length": len(prompt_text),
-                    "report_summary_char_length": len(report.executive_summary) if report else 0
+                    "report_summary_char_length": summary_len
                 }
             }]
         }

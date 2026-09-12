@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, UploadFile, File, Depends
+from fastapi import APIRouter, HTTPException, UploadFile, File, Depends, Request
 from fastapi.responses import StreamingResponse, JSONResponse
 from pydantic import BaseModel, field_validator
 from typing import Optional, Dict, Any, List
@@ -122,43 +122,84 @@ def _extract_title_from_filename(filename: str) -> str:
             return title.replace("_", " ")
     return "Unknown Paper"
 
-@router.post("/analyze", response_model=AnalysisResponse)
-async def analyze_paper(request: AnalysisRequest):
+@router.post("/analyze")
+async def analyze_paper(request: Request):
     """
-    Analyze a research paper using the AI agent system
+    Analyze a research paper using the AI agent system.
+    Supports both JSON { "file_id": ... } and multipart/form-data with file upload.
     """
-    try:
-        # Construct file path from file_id
+    content_type = request.headers.get("content-type", "")
+    
+    if "multipart/form-data" in content_type:
+        form = await request.form()
+        file_obj = form.get("file")
+        if not file_obj or not hasattr(file_obj, "filename"):
+            raise HTTPException(status_code=400, detail="No PDF file provided in form data")
+            
+        filename = file_obj.filename
+        if not filename.lower().endswith('.pdf'):
+            raise HTTPException(status_code=400, detail="Only PDF files are supported")
+            
+        file_bytes = await file_obj.read()
+        if len(file_bytes) > settings.max_file_size:
+            raise HTTPException(
+                status_code=400,
+                detail=f"File too large. Maximum size is {settings.max_file_size // (1024*1024)}MB"
+            )
+            
+        file_id = str(uuid.uuid4())
+        saved_filename = f"{file_id}_{filename}"
         upload_dir = settings.upload_dir
-        file_path = None
+        os.makedirs(upload_dir, exist_ok=True)
+        file_path = os.path.join(upload_dir, saved_filename)
         
-        # Find the file with the given file_id
-        for filename in os.listdir(upload_dir):
-            if filename.startswith(request.file_id):
-                file_path = os.path.join(upload_dir, filename)
-                break
-        
-        if not file_path or not os.path.exists(file_path):
-            raise HTTPException(status_code=404, detail="File not found")
-        
-        logger.info(f"Starting analysis for file: {file_path}")
-        
-        # Run the analysis
-        result = await get_orchestrator().analyze_paper(file_path, request.query)
-        
-        if result["status"] == "error":
-            raise HTTPException(status_code=500, detail=result["error"])
-        
-        return AnalysisResponse(
-            analysis_id=result["analysis_id"],
-            status="success",
-            message="Analysis completed successfully",
-            analysis=result["comprehensive_analysis"]
-        )
-        
-    except Exception as e:
-        logger.error(f"Error in analysis endpoint: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
+        with open(file_path, "wb") as f:
+            f.write(file_bytes)
+            
+        # Submit async analysis job
+        async_req = AsyncAnalyzeRequest(file_id=file_id, analysis_type="comprehensive")
+        res = await analyze_paper_async(async_req)
+        return {
+            "analysis_id": res.get("job_id"),
+            "job_id": res.get("job_id"),
+            "status": "queued",
+            "message": "Paper uploaded and analysis queued successfully"
+        }
+    else:
+        # JSON body
+        body = await request.json()
+        req = AnalysisRequest(**body)
+        try:
+            upload_dir = settings.upload_dir
+            file_path = None
+            
+            for filename in os.listdir(upload_dir):
+                if filename.startswith(req.file_id):
+                    file_path = os.path.join(upload_dir, filename)
+                    break
+            
+            if not file_path or not os.path.exists(file_path):
+                raise HTTPException(status_code=404, detail="File not found")
+            
+            logger.info(f"Starting analysis for file: {file_path}")
+            
+            result = await get_orchestrator().analyze_paper(file_path, req.query)
+            
+            if result["status"] == "error":
+                raise HTTPException(status_code=500, detail=result["error"])
+            
+            return {
+                "analysis_id": result["analysis_id"],
+                "status": "success",
+                "message": "Analysis completed successfully",
+                "analysis": result["comprehensive_analysis"]
+            }
+            
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Error in analysis endpoint: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
 
 
 @router.post("/analyze/async")

@@ -269,23 +269,40 @@ class AnalysisManager:
         paper_info = formatted["paper_info"]
         
         # Handle authors field - convert string to array if needed
-        if "author" in paper_info and "authors" not in paper_info:
-            # If we have a single author string, convert to array
-            author_str = paper_info["author"]
-            if author_str and author_str != "Unknown":
-                # Split by common delimiters and clean up
-                if ";" in author_str:
-                    authors = [author.strip() for author in author_str.split(";") if author.strip()]
-                elif "," in author_str:
-                    authors = [author.strip() for author in author_str.split(",") if author.strip()]
-                else:
-                    authors = [author_str.strip()]
-                paper_info["authors"] = authors
+        authors_val = paper_info.get("authors")
+        author_str = paper_info.get("author")
+        if (not authors_val or len(authors_val) == 0) and author_str and author_str != "Unknown":
+            # Split by common delimiters and clean up
+            if ";" in author_str:
+                authors = [a.strip() for a in author_str.split(";") if a.strip()]
+            elif "," in author_str:
+                authors = [a.strip() for a in author_str.split(",") if a.strip()]
+            elif " and " in author_str:
+                authors = [a.strip() for a in author_str.split(" and ") if a.strip()]
             else:
-                paper_info["authors"] = []
-        elif "authors" not in paper_info:
+                authors = [author_str.strip()]
+            paper_info["authors"] = authors
+        elif not authors_val:
             paper_info["authors"] = []
+
+        # Extract venue and year if missing
+        if not paper_info.get("venue"):
+            if paper_info.get("journal_ref"):
+                paper_info["venue"] = paper_info["journal_ref"]
+            elif paper_info.get("subject"):
+                paper_info["venue"] = paper_info["subject"]
         
+        if not paper_info.get("year"):
+            date_candidate = paper_info.get("upload_date") or paper_info.get("published") or formatted.get("created_at")
+            if date_candidate:
+                import re
+                year_match = re.search(r'\b(19\d\d|20\d\d)\b', str(date_candidate))
+                if year_match:
+                    try:
+                        paper_info["year"] = int(year_match.group(1))
+                    except (ValueError, TypeError):
+                        pass
+
         # Ensure required fields exist with defaults
         if "title" not in paper_info:
             paper_info["title"] = "Unknown Paper"
