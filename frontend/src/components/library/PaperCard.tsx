@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { AlertTriangle, Check, MoreHorizontal, Trash2, FileText, BookOpen, ExternalLink } from 'lucide-react';
 import { TrustDots, type Axis } from '../trust/TrustDots';
 import type { TrustLevel } from '../../lib/variants';
+import { apiUrl } from '../../config/api';
 
 export interface PaperCardModel {
   id: string;
@@ -102,7 +103,7 @@ export function PaperCard({
                     <span>Read Paper</span>
                   </button>
                   <a
-                    href={`/api/v1/analyses/${p.id}/pdf`}
+                    href={apiUrl(`/api/v1/analyses/${p.id}/paper`)}
                     target="_blank"
                     rel="noreferrer"
                     onClick={() => setShowMenu(false)}

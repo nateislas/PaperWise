@@ -78,24 +78,55 @@ export function Library() {
           independent: 'unavailable',
         };
 
+        const rawStatus = (item.analysis_info?.status || item.status || '').toLowerCase();
+        const state: 'ready' | 'running' | 'queued' | 'failed' =
+          rawStatus === 'completed' || rawStatus === 'ready'
+            ? 'ready'
+            : rawStatus === 'processing' || rawStatus === 'running'
+            ? 'running'
+            : rawStatus === 'pending' || rawStatus === 'queued'
+            ? 'queued'
+            : rawStatus === 'failed' || rawStatus === 'error'
+            ? 'failed'
+            : 'queued';
+
         const hasV2Levels = Boolean(v2Methodology || v2Evidence || v2Reproducibility || v2Novelty);
-        const levels: Partial<Record<string, TrustLevel>> = (isFeatureEnabled('rubricV2') || hasV2Levels) && hasV2Levels
-          ? {
-              methodology: (v2Methodology as TrustLevel) || 'adequate',
-              evidence: (v2Evidence as TrustLevel) || 'adequate',
-              reproducibility: (v2Reproducibility as TrustLevel) || 'adequate',
-              novelty: (v2Novelty as TrustLevel) || 'adequate',
-              independent: 'unavailable',
-            }
-          : legacyLevels;
+        const hasEvaluations = Boolean(
+          hasV2Levels ||
+          resObj.methodological_evaluation ||
+          resObj.evidence_quality ||
+          resObj.novelty_assessment
+        );
+
+        const unavailableLevels: Partial<Record<string, TrustLevel>> = {
+          methodology: 'unavailable',
+          evidence: 'unavailable',
+          reproducibility: 'unavailable',
+          novelty: 'unavailable',
+          independent: 'unavailable',
+        };
+
+        const levels: Partial<Record<string, TrustLevel>> = (state === 'ready' && hasEvaluations)
+          ? ((isFeatureEnabled('rubricV2') || hasV2Levels) && hasV2Levels
+              ? {
+                  methodology: (v2Methodology as TrustLevel) || 'adequate',
+                  evidence: (v2Evidence as TrustLevel) || 'adequate',
+                  reproducibility: (v2Reproducibility as TrustLevel) || 'adequate',
+                  novelty: (v2Novelty as TrustLevel) || 'adequate',
+                  independent: 'unavailable',
+                }
+              : legacyLevels)
+          : unavailableLevels;
 
         // Check for v2 concerns (blocking + material only per DECISIONS.md D-04)
         const v2Concerns = resObj.concerns || item.concerns;
         let concernsList: any[] = [];
-        if (Array.isArray(v2Concerns) && v2Concerns.length > 0) {
-          concernsList = v2Concerns.filter((c: any) => c.severity === 'blocking' || c.severity === 'material');
-        } else {
-          concernsList = methEval.potential_issues || resObj.critical_review?.major_concerns || [];
+        if (state === 'ready' && hasEvaluations) {
+          if (Array.isArray(v2Concerns) && v2Concerns.length > 0) {
+            concernsList = v2Concerns.filter((c: any) => c.severity === 'blocking' || c.severity === 'material');
+          } else {
+            concernsList = methEval.potential_issues || resObj.critical_review?.major_concerns || [];
+          }
         }
 
         const createdTs = item.created_at ? new Date(item.created_at).getTime() : 0;
@@ -113,7 +144,7 @@ export function Library() {
           concernCount: concernsList.length,
           openedAgo: item.created_at ? new Date(item.created_at).toLocaleDateString() : '',
           createdTimestamp: createdTs,
-          state: item.status === 'completed' || item.status === 'ready' ? 'ready' : item.status === 'processing' ? 'running' : 'ready',
+          state,
           stage: item.stage,
         };
       });
@@ -196,7 +227,10 @@ export function Library() {
 
   const handleDelete = async (id: string) => {
     try {
-      await fetch(apiUrl(`/api/v1/analyses/${id}`), { method: 'DELETE' });
+      const res = await fetch(apiUrl(`/api/v1/analyses/${id}`), { method: 'DELETE' });
+      if (!res.ok) {
+        throw new Error(`Failed to delete paper (${res.status} ${res.statusText})`);
+      }
       setPapers((prev) => prev.filter((p) => p.id !== id));
     } catch (err) {
       console.error('Delete failed:', err);
