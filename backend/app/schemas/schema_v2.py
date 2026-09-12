@@ -1,6 +1,6 @@
 from enum import Enum
 from typing import List, Optional, Literal
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 RUBRIC_VERSION = "2026.09"
 
@@ -37,6 +37,14 @@ class AxisScore(BaseModel):
     detail: Optional[str] = Field(None, max_length=900)
     confidence: float = Field(..., ge=0, le=1)
     evidence: List[Evidence] = Field(default_factory=list, max_length=4)
+
+    @model_validator(mode="after")
+    def validate_evidence_for_substantive_levels(self) -> "AxisScore":
+        substantive = {Level.STRONG, Level.WEAK, Level.FAILING}
+        has_page = any(getattr(e, "page", None) is not None for e in (self.evidence or []))
+        if self.level in substantive and not has_page:
+            self.level = Level.UNCLEAR
+        return self
 
 class Concern(BaseModel):
     severity: Severity

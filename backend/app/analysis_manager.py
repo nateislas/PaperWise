@@ -293,7 +293,7 @@ class AnalysisManager:
                 paper_info["venue"] = paper_info["subject"]
         
         if not paper_info.get("year"):
-            date_candidate = paper_info.get("upload_date") or paper_info.get("published") or formatted.get("created_at")
+            date_candidate = paper_info.get("published")
             if date_candidate:
                 import re
                 year_match = re.search(r'\b(19\d\d|20\d\d)\b', str(date_candidate))

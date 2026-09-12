@@ -34,11 +34,13 @@ def test_rubric_v2_schema_instantiation():
             level=Level.WEAK,
             one_line="Source code repository not provided.",
             confidence=0.9,
+            evidence=[Evidence(page=8, section="Data Availability", quote="Code available on reasonable request")],
         ),
         novelty=AxisScore(
             level=Level.STRONG,
             one_line="Highly novel backbone sampling algorithm.",
             confidence=0.95,
+            evidence=[Evidence(page=2, section="Introduction", quote="First to demonstrate backbone sampling")],
         ),
         concerns=[
             Concern(
@@ -109,6 +111,7 @@ async def test_synthesis_node_with_analysis_v2():
             level=Level.STRONG,
             one_line="Statistically significant improvement.",
             confidence=0.9,
+            evidence=[Evidence(page=6, section="Results", quote="p < 0.001 across all runs")],
         ),
         reproducibility=AxisScore(
             level=Level.ADEQUATE,
@@ -119,6 +122,7 @@ async def test_synthesis_node_with_analysis_v2():
             level=Level.STRONG,
             one_line="First demonstrated application to graph routing.",
             confidence=0.95,
+            evidence=[Evidence(page=1, section="Introduction", quote="First demonstrated application")],
         ),
         concerns=[
             Concern(
@@ -173,4 +177,47 @@ async def test_synthesis_node_with_analysis_v2():
         # Verify reconciliation was executed
         assert final_rep.methodology.level == Level.WEAK
         assert res["node_provenance"][0]["status"] == "success"
+
+
+def test_uncited_substantive_ratings_downgraded_to_unclear():
+    # Substantive ratings without page citations must downgrade to unclear
+    uncited_strong = AxisScore(
+        level=Level.STRONG,
+        one_line="Uncited strong claim.",
+        confidence=0.9,
+        evidence=[],
+    )
+    assert uncited_strong.level == Level.UNCLEAR
+
+    uncited_weak = AxisScore(
+        level=Level.WEAK,
+        one_line="Uncited weak claim.",
+        confidence=0.8,
+    )
+    assert uncited_weak.level == Level.UNCLEAR
+
+    uncited_failing = AxisScore(
+        level=Level.FAILING,
+        one_line="Uncited failing claim.",
+        confidence=0.95,
+        evidence=[],
+    )
+    assert uncited_failing.level == Level.UNCLEAR
+
+    # Adequate and Unclear do not require page citations
+    uncited_adequate = AxisScore(
+        level=Level.ADEQUATE,
+        one_line="Unremarkable findings.",
+        confidence=0.7,
+    )
+    assert uncited_adequate.level == Level.ADEQUATE
+
+    # Substantive ratings with page citations remain intact
+    cited_strong = AxisScore(
+        level=Level.STRONG,
+        one_line="Cited strong claim.",
+        confidence=0.9,
+        evidence=[Evidence(page=4, section="Methods")],
+    )
+    assert cited_strong.level == Level.STRONG
 

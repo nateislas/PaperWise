@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, UploadFile, File, Depends, Request
 from fastapi.responses import StreamingResponse, JSONResponse
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, ValidationError
 from typing import Optional, Dict, Any, List
 import os
 import logging
@@ -140,8 +140,7 @@ async def analyze_paper(request: Request):
         if not filename.lower().endswith('.pdf'):
             raise HTTPException(status_code=400, detail="Only PDF files are supported")
             
-        file_bytes = await file_obj.read()
-        if len(file_bytes) > settings.max_file_size:
+        if getattr(file_obj, "size", None) and file_obj.size > settings.max_file_size:
             raise HTTPException(
                 status_code=400,
                 detail=f"File too large. Maximum size is {settings.max_file_size // (1024*1024)}MB"
@@ -153,8 +152,20 @@ async def analyze_paper(request: Request):
         os.makedirs(upload_dir, exist_ok=True)
         file_path = os.path.join(upload_dir, saved_filename)
         
+        chunk_size = 64 * 1024
+        total_size = 0
         with open(file_path, "wb") as f:
-            f.write(file_bytes)
+            while chunk := await file_obj.read(chunk_size):
+                total_size += len(chunk)
+                if total_size > settings.max_file_size:
+                    f.close()
+                    if os.path.exists(file_path):
+                        os.remove(file_path)
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"File too large. Maximum size is {settings.max_file_size // (1024*1024)}MB"
+                    )
+                f.write(chunk)
             
         # Submit async analysis job
         async_req = AsyncAnalyzeRequest(file_id=file_id, analysis_type="comprehensive")
@@ -167,8 +178,15 @@ async def analyze_paper(request: Request):
         }
     else:
         # JSON body
-        body = await request.json()
-        req = AnalysisRequest(**body)
+        try:
+            body = await request.json()
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid JSON body")
+            
+        try:
+            req = AnalysisRequest(**body)
+        except ValidationError as val_err:
+            raise HTTPException(status_code=422, detail=val_err.errors())
         try:
             upload_dir = settings.upload_dir
             file_path = None
