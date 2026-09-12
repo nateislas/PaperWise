@@ -36,13 +36,15 @@ class BaseAgent(ABC):
         self.description = description
         
         # Initialize LangChain Gemini client
+        thinking_level = settings.get_thinking_level(name or "base")
         self.llm = ChatGoogleGenerativeAI(
             model=settings.gemini_model,
             google_api_key=settings.gemini_api_key,
             temperature=settings.gemini_temperature,
             timeout=settings.request_timeout,
             max_retries=2,
-            streaming=True
+            streaming=True,
+            thinking_level=thinking_level
         )
         
         self.system_prompt = self._get_system_prompt()

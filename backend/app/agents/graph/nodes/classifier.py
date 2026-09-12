@@ -43,10 +43,12 @@ async def field_classifier_node(state: PaperAnalysisState) -> Dict[str, Any]:
             }]
         }
     
+    thinking_level = settings.get_thinking_level("classifier")
     llm = ChatGoogleGenerativeAI(
         model=settings.gemini_model,
         google_api_key=settings.gemini_api_key,
-        temperature=0
+        temperature=0,
+        thinking_level=thinking_level
     ).with_structured_output(FieldClassification)
     
     # Use first few chunks for classification to save tokens

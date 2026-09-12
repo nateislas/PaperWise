@@ -76,6 +76,7 @@ def analyze_job(self, job: Dict[str, Any]) -> Dict[str, Any]:
                         "analysis_id": chunk.get("analysis_id"),
                         "status": chunk.get("status"),
                         "comprehensive_analysis": chunk.get("analysis"),
+                        "_parsed_content": chunk.get("_parsed_content")
                     }
                     publish_update(job["job_id"], {"type": "complete"})
                 elif ctype == "error":
@@ -87,13 +88,22 @@ def analyze_job(self, job: Dict[str, Any]) -> Dict[str, Any]:
         # Save results using analysis manager
         analysis_id = job["job_id"]
         
-        # Save comprehensive analysis
+        # Save comprehensive analysis (ensure parsed_content is excluded)
         if "comprehensive_analysis" in result:
+            comp_analysis = result["comprehensive_analysis"]
+            if isinstance(comp_analysis, dict):
+                comp_analysis.pop("parsed_content", None)
             analysis_manager.save_analysis_result(
                 analysis_id, 
                 "comprehensive", 
-                result["comprehensive_analysis"]
+                comp_analysis
             )
+            parsed_content = result.get("_parsed_content")
+            if parsed_content:
+                analysis_manager.save_parsed_content(
+                    analysis_id,
+                    parsed_content
+                )
         
         # Update metadata with completion info and extracted paper metadata
         metadata = analysis_manager.get_analysis_metadata(analysis_id)
@@ -145,41 +155,6 @@ def analyze_job(self, job: Dict[str, Any]) -> Dict[str, Any]:
                         logger.info(f"✅ PageIndex pre-submission successful. doc_id: {doc_id}")
                 except Exception as pageindex_error:
                     logger.warning(f"⚠️ PageIndex background pre-submission failed: {pageindex_error}")
-
-            # NEW: Upload document to LlamaCloud Managed RAG
-            if settings.llama_cloud_api_key:
-                async def upload_to_llama():
-                    try:
-                        logger.info(f"☁️ Uploading paper to LlamaCloud Managed RAG: {file_path}")
-                        from llama_cloud_services import LlamaCloudIndex
-                        
-                        # Connection parameters
-                        collection_name = f"paper_{analysis_id}"
-                        
-                        # Get or Create Index
-                        index = await LlamaCloudIndex.acreate_index(
-                            name=collection_name,
-                            project_name=settings.llama_cloud_project,
-                            organization_id=settings.llama_cloud_org_id,
-                            api_key=settings.llama_cloud_api_key
-                        )
-                        
-                        # Upload file
-                        await index.aupload_file(file_path)
-                        logger.info(f"✅ File uploaded to LlamaCloud. Waiting for ingestion...")
-                        
-                        # Wait for ingestion to complete so it's ready for chat immediately
-                        await index.await_for_completion()
-                        
-                        return index.id
-                    except Exception as llama_error:
-                        logger.warning(f"⚠️ LlamaCloud upload failed: {llama_error}")
-                        return None
-
-                llama_index_id = asyncio.run(upload_to_llama())
-                if llama_index_id:
-                    metadata["llama_index_id"] = llama_index_id
-                    logger.info(f"✅ LlamaCloud ingestion complete. Index ID: {llama_index_id}")
 
             analysis_manager.save_analysis_metadata(analysis_id, metadata)
 

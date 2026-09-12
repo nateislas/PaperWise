@@ -76,10 +76,13 @@ async def analyze_expert(state: PaperAnalysisState, prompt: str, analysis_key: s
         }
     
     try:
+        agent_role = analysis_key.replace("_analysis", "").replace("draft_", "")
+        thinking_level = settings.get_thinking_level(agent_role)
         llm = ChatGoogleGenerativeAI(
             model=settings.gemini_model,
             google_api_key=settings.gemini_api_key,
-            temperature=settings.gemini_temperature
+            temperature=settings.gemini_temperature,
+            thinking_level=thinking_level
         )
         
         messages = [
@@ -146,10 +149,13 @@ async def analyze_expert_revision(state: PaperAnalysisState, original_prompt: st
     start_time = time.time()
     
     try:
+        agent_role = final_key.replace("_analysis", "").replace("draft_", "")
+        thinking_level = settings.get_thinking_level(agent_role)
         llm = ChatGoogleGenerativeAI(
             model=settings.gemini_model,
             google_api_key=settings.gemini_api_key,
-            temperature=settings.gemini_temperature
+            temperature=settings.gemini_temperature,
+            thinking_level=thinking_level
         )
         
         # Include prepared paper content with extracted tables

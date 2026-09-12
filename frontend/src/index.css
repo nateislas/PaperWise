@@ -251,3 +251,17 @@ code {
   height: 100% !important;
   overflow: auto !important;
 }
+
+/* PDF.js Find/Search text layer highlights — used by the citation click handler */
+.textLayer .highlight {
+  background-color: rgba(250, 204, 21, 0.5) !important;
+  border-radius: 2px !important;
+  outline: 1.5px solid rgba(217, 119, 6, 0.6);
+  mix-blend-mode: multiply;
+}
+
+.textLayer .highlight.selected {
+  background-color: rgba(59, 130, 246, 0.45) !important;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.7) !important;
+  border-radius: 2px !important;
+}

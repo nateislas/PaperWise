@@ -14,9 +14,17 @@ class ChatRequest(BaseModel):
     message: str
     history: Optional[List[Dict[str, str]]] = []
 
+class SourceDetail(BaseModel):
+    label: str
+    page: Optional[int] = None
+    section: Optional[str] = None
+    snippet: Optional[str] = None
+    type: Optional[str] = "pdf"
+
 class ChatResponse(BaseModel):
     answer: str
     sources: List[str]
+    source_details: Optional[List[SourceDetail]] = []
 
 @router.post("/analyses/{analysis_id}/chat", response_model=ChatResponse)
 async def chat_with_paper(
@@ -43,18 +51,19 @@ async def chat_with_paper(
                 import logging
                 logging.warning(f"PageIndex failed: {pageindex_error}")
         
-        # Initialize and call the LangChain Knowledge Chat Agent
+        # Initialize and call the LangGraph Knowledge Chat Agent
         agent = KnowledgeChatAgent(analysis_id)
-        result = await agent.chat(request.message, request.history)
+        result = await agent.chat(request.message, request.history or [])
         
         return ChatResponse(
             answer=result["answer"],
-            sources=result["sources"]
+            sources=result["sources"],
+            source_details=result.get("source_details", [])
         )
         
+    except HTTPException:
+        raise
     except Exception as e:
         import logging
-        logging.error(f"Error in chat endpoint: {e}")
-        import traceback
-        logging.error(traceback.format_exc())
+        logging.error(f"Error in chat endpoint: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to process chat query: {str(e)}")

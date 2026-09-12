@@ -14,8 +14,44 @@ class Settings(BaseSettings):
     # Gemini API Configuration
     gemini_api_key: Optional[str] = None
     gemini_base_url: str = "https://generativelanguage.googleapis.com/v1beta/openai/"
-    gemini_model: str = "gemini-2.5-flash"
-    gemini_temperature: float = 0.1
+    gemini_model: str = "gemini-3.5-flash"
+    gemini_temperature: float = 1.0
+    gemini_thinking_level: str = "medium"
+
+    # Per-Agent Thinking Level Configurations (supported: 'minimal', 'low', 'medium', 'high')
+    chat_agent_thinking_level: Optional[str] = None
+    classifier_agent_thinking_level: Optional[str] = None
+    expert_agent_thinking_level: Optional[str] = None
+    methodology_agent_thinking_level: Optional[str] = None
+    results_agent_thinking_level: Optional[str] = None
+    context_agent_thinking_level: Optional[str] = None
+    synthesis_agent_thinking_level: Optional[str] = None
+    base_agent_thinking_level: Optional[str] = None
+
+    def get_thinking_level(self, agent_name: str) -> Optional[str]:
+        """Get thinking level for a specific agent with fallback to global default.
+        Returns None if the configured model does not support thinking levels (e.g. gemini-2.5-flash).
+        """
+        model_name = (self.gemini_model or "").lower().strip()
+        # Thinking level is only supported on Gemini 3+ or explicit thinking models
+        if not ("3." in model_name or "thinking" in model_name):
+            return None
+
+        agent_key = (agent_name or "").lower().replace("-", "_").strip()
+        override_map = {
+            "chat": self.chat_agent_thinking_level,
+            "knowledge_chat": self.chat_agent_thinking_level,
+            "classifier": self.classifier_agent_thinking_level,
+            "expert": self.expert_agent_thinking_level,
+            "methodology": self.methodology_agent_thinking_level or self.expert_agent_thinking_level,
+            "results": self.results_agent_thinking_level or self.expert_agent_thinking_level,
+            "context": self.context_agent_thinking_level or self.expert_agent_thinking_level,
+            "synthesis": self.synthesis_agent_thinking_level,
+            "base": self.base_agent_thinking_level,
+        }
+        val = override_map.get(agent_key) or self.gemini_thinking_level or "medium"
+        cleaned = str(val).lower().strip()
+        return cleaned if cleaned in ["minimal", "low", "medium", "high"] else "medium"
 
     # PageIndex Configuration
     pageindex_api_key: Optional[str] = None
