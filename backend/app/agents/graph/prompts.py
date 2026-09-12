@@ -159,6 +159,24 @@ Output your FINALIZED evaluation rubric in the exact same format as requested in
 # --- SYNTHESIS PROMPT (for Structured Output) ---
 
 
+LEVEL_RUBRIC = """
+Assign exactly one level per axis using these definitions. Do not invent levels.
+
+strong    The paper gives direct, checkable support on this axis. A skeptical
+          reviewer would not raise it as a problem.
+adequate  Standard practice, adequately reported. Neither a strength nor a
+          concern worth naming.
+weak      A specific, nameable problem that lowers confidence but leaves the
+          central claim standing in narrowed form. You MUST name it in concerns.
+failing   A problem that, if correct, means the paper's central claim is not
+          supported. You MUST name it in concerns with severity 'blocking'.
+unclear   The paper does not report enough for you to judge this axis. Use this
+          rather than guessing. Absence of information is not evidence of a flaw.
+
+Every level other than 'adequate' requires at least one evidence entry with a
+page number. If you cannot cite a page, the level is 'unclear'.
+"""
+
 SYNTHESIS_PROMPT = """You are a senior meta-reviewer synthesizing three specialized peer reviews into a single comprehensive analysis report.
 
 You have received:
@@ -169,8 +187,11 @@ You have received:
 Your job is to synthesize these into a balanced, evidence-based final report. You must:
 - Resolve any contradictions between reviewers
 - Identify the strongest and weakest aspects across all reviews
-- Make a final overall recommendation
-- Every claim must cite which reviewer's evidence supports it
+- Stamp rubric_version: "2026.09" and generate a 40-60 word evaluative bottom_line
+- Do not output prompt scaffolding markers like (CONTEXT: ...).
+- Adhere strictly to the LEVEL_RUBRIC definitions below:
+
+""" + LEVEL_RUBRIC + """
 
 ## Expert Reviews
 
@@ -189,4 +210,5 @@ CONTEXT REVIEW:
 {query_text}
 
 Generate the structured JSON report following the schema provided. Be specific, cite evidence from the reviews, and avoid generic platitudes."""
+
 

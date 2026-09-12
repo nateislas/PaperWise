@@ -44,7 +44,7 @@ async def list_analyses(
 @router.get("/analyses/{analysis_id}")
 async def get_analysis(analysis_id: str = Path(..., description="Analysis ID")):
     """
-    Get analysis metadata and summary
+    Get analysis metadata, parsed content, and summary results
     """
     try:
         metadata = analysis_manager.get_analysis_metadata(analysis_id)
@@ -57,14 +57,42 @@ async def get_analysis(analysis_id: str = Path(..., description="Analysis ID")):
         # Get available result types
         analysis_dir = os.path.join(analysis_manager.analyses_dir, analysis_id, "results")
         result_types = []
+        comprehensive = None
         if os.path.exists(analysis_dir):
             result_types = [f.replace('.json', '') for f in os.listdir(analysis_dir) 
                           if f.endswith('.json')]
+            if "comprehensive" in result_types:
+                comprehensive = analysis_manager.get_analysis_result(analysis_id, "comprehensive")
+                if comprehensive and isinstance(comprehensive, dict) and "comprehensive_analysis" in comprehensive:
+                    inner = comprehensive.get("comprehensive_analysis")
+                    if isinstance(inner, dict):
+                        comprehensive = {**inner, **comprehensive}
         
+        parsed_content = analysis_manager.get_parsed_content(analysis_id)
+        parsed_markdown = parsed_content.get("markdown") if parsed_content else None
+        
+        job_info = None
+        try:
+            from app.job_state import get_status
+            job_info = get_status(analysis_id)
+        except Exception:
+            pass
+
+        effective_status = "completed" if comprehensive else metadata.get("analysis_info", {}).get("status", "processing")
+        if job_info and job_info.get("state"):
+            if job_info["state"] == "error":
+                effective_status = "failed"
+            elif not comprehensive and job_info["state"] in ("queued", "processing"):
+                effective_status = job_info["state"]
+
         return {
             "analysis_id": analysis_id,
             **formatted_metadata,
-            "available_results": result_types
+            "status": effective_status,
+            "job": job_info,
+            "available_results": result_types,
+            "results": comprehensive,
+            "parsed_markdown": parsed_markdown,
         }
     except HTTPException:
         raise
@@ -92,6 +120,7 @@ async def get_analysis_result(
         raise HTTPException(status_code=500, detail=f"Failed to get result: {str(e)}")
 
 
+@router.get("/analyses/{analysis_id}/pdf")
 @router.get("/analyses/{analysis_id}/paper")
 async def download_paper(analysis_id: str = Path(..., description="Analysis ID")):
     """

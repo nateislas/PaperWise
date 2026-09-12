@@ -163,7 +163,12 @@ class OrchestratorAgent(BaseAgent):
 
             # Final validation: check if analysis succeeded or failed
             if full_state.get("final_report"):
-                report_dict = full_state["final_report"].model_dump()
+                final_rep = full_state["final_report"]
+                report_dict = (
+                    final_rep.to_comprehensive_dict()
+                    if hasattr(final_rep, "to_comprehensive_dict")
+                    else final_rep.model_dump()
+                )
                 
                 # Add metadata for UI compatibility
                 final_output = {

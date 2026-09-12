@@ -2,6 +2,7 @@ from typing import List, Dict, Any, Optional, Annotated, Union
 from typing_extensions import TypedDict
 from pydantic import BaseModel, Field
 import operator
+from app.schemas.schema_v2 import AnalysisV2
 
 # --- Pydantic Models for Structured Output ---
 
@@ -60,6 +61,8 @@ class CriticalReview(BaseModel):
 
 class AnalysisReport(BaseModel):
     """Comprehensive analysis report synthesizing all aspects of a research paper."""
+    rubric_version: str = Field(default="2026.09", description="Evaluation rubric version")
+    bottom_line: Optional[str] = Field(default=None, description="One-sentence bottom line answering: does the evidence support the headline claim?")
     executive_summary: str = Field(description="2-3 paragraphs: What problem does this solve? What's the key innovation? What are the main results?")
     novelty_assessment: NoveltyAssessment
     gap_analysis: GapAnalysis
@@ -108,7 +111,7 @@ class PaperAnalysisState(TypedDict):
     context_analysis: str
     
     # Final Output
-    final_report: AnalysisReport
+    final_report: Union[AnalysisV2, AnalysisReport, None]
     
     # Control/Status
     status_updates: Annotated[List[Dict[str, Any]], operator.add]
