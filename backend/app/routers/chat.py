@@ -14,9 +14,17 @@ class ChatRequest(BaseModel):
     message: str
     history: Optional[List[Dict[str, str]]] = []
 
+class SourceDetail(BaseModel):
+    label: str
+    page: Optional[int] = None
+    section: Optional[str] = None
+    snippet: Optional[str] = None
+    type: Optional[str] = "pdf"
+
 class ChatResponse(BaseModel):
     answer: str
     sources: List[str]
+    source_details: Optional[List[SourceDetail]] = []
 
 @router.post("/analyses/{analysis_id}/chat", response_model=ChatResponse)
 async def chat_with_paper(
@@ -49,7 +57,8 @@ async def chat_with_paper(
         
         return ChatResponse(
             answer=result["answer"],
-            sources=result["sources"]
+            sources=result["sources"],
+            source_details=result.get("source_details", [])
         )
         
     except HTTPException:

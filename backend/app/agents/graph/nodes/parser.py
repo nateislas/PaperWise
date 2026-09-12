@@ -50,9 +50,13 @@ async def parse_pdf_node(state: PaperAnalysisState) -> Dict[str, Any]:
         pages_count = result.get("metadata", {}).get("pages", 0)
         chunks_count = len(result["documents"])
 
+        parsed_content = dict(result.get("parsed_content", {}))
+        if "chunks" not in parsed_content and result.get("documents"):
+            parsed_content["chunks"] = result["documents"]
+
         return {
             "documents": result["documents"],
-            "parsed_content": result["parsed_content"],
+            "parsed_content": parsed_content,
             "status_updates": [{
                 "type": "status",
                 "message": f"PDF parsed via {engine} ({pages_count} pages, {chunks_count} chunks) in {elapsed:.2f}s.",

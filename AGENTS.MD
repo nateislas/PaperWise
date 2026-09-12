@@ -28,7 +28,7 @@ The Knowledge Chat tab uses a specialized **LangGraph ReAct Deep Agent** for int
 
 ### Capabilities:
 *   **Multi-Source Reasoning**: Dynamically consults paper text chunks, the pre-computed peer review analysis report, extracted Markdown tables, and paper metadata.
-*   **Verified Citations**: Provides page-level citations (`[Page X]`) for every claim, linking directly to the embedded PDF viewer.
+*   **Granular & Interactive Citations**: Generates section- and page-level citations (`[Page X: Section Title]`, `[Page X]`, `[Review Section]`) backed by structured metadata (`source_details`). In-text citations and bottom source chips automatically jump to the target PDF page, highlight the page, and pinpoint matching text in the viewer (or navigate to report sections in the Analysis tab).
 *   **Contextual Memory**: Retains conversation history and user highlights.
 *   **100% Self-Contained**: Operates locally without external cloud index dependencies.
 
@@ -37,5 +37,11 @@ The Knowledge Chat tab uses a specialized **LangGraph ReAct Deep Agent** for int
 ## 🛠️ Technology Stack
 *   **Orchestration**: LangGraph
 *   **Intelligence**: Google Gemini 3.5 Flash (default temperature: 1.0)
+*   **Thinking / Reasoning Levels**: Individually configurable per agent via `.env` (`minimal`, `low`, `medium`, `high`), defaulting to `medium`:
+    *   Knowledge Chat: `CHAT_AGENT_THINKING_LEVEL=medium`
+    *   Domain Classifier: `CLASSIFIER_AGENT_THINKING_LEVEL=low`
+    *   Expert Evaluators: `EXPERT_AGENT_THINKING_LEVEL=medium` (with `METHODOLOGY_AGENT_THINKING_LEVEL`, `RESULTS_AGENT_THINKING_LEVEL`, `CONTEXT_AGENT_THINKING_LEVEL`)
+    *   Synthesis Agent: `SYNTHESIS_AGENT_THINKING_LEVEL=medium`
+    *   Global Default: `GEMINI_THINKING_LEVEL=medium`
 *   **Parsing**: LiteParse (Local Rust/PDFium Engine + OCR)
 *   **Workflow**: Celery + Redis for asynchronous background processing

@@ -5,6 +5,7 @@ import PaperAnalysis from './pages/PaperAnalysis';
 import Dashboard from './pages/Dashboard';
 import AnalysisPage from './pages/AnalysisPage';
 import './index.css';
+import 'katex/dist/katex.min.css';
 
 function App() {
   return (

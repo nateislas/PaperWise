@@ -1,5 +1,10 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams } from 'react-router-dom';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import { ExternalLink, FileText, Compass, Bookmark, X } from 'lucide-react';
 import AnalysisResults from '../components/AnalysisResults';
 import StreamingAnalysisResults from '../components/StreamingAnalysisResults';
 import { repairTruncatedJson } from '../utils/jsonRepair';
@@ -21,6 +26,14 @@ const SafePdfLoader = PdfLoader as any;
 const SafePdfHighlighter = PdfHighlighter as any;
 const SafeTextHighlight = TextHighlight as any;
 const SafeAreaHighlight = AreaHighlight as any;
+
+export interface SourceDetail {
+  label: string;
+  page?: number;
+  section?: string;
+  snippet?: string;
+  type?: 'pdf' | 'report' | 'paper_chunk' | 'analysis_report' | 'unknown' | string;
+}
 
 const COLOR_PRESETS = [
   { name: 'Yellow', highlightColor: 'rgba(250, 204, 21, 0.35)', underlineColor: 'rgba(234, 179, 8, 1)', solid: '#eab308' },
@@ -142,6 +155,7 @@ const AnalysisPage: React.FC<AnalysisPageProps> = () => {
     role: 'user' | 'assistant', 
     content: string, 
     sources?: string[], 
+    source_details?: SourceDetail[],
     contextText?: string, 
     fullContent?: string 
   }>>([
@@ -156,6 +170,7 @@ const AnalysisPage: React.FC<AnalysisPageProps> = () => {
   const [pendingHideTip, setPendingHideTip] = useState<(() => void) | null>(null);
   const scrollViewerTo = useRef<((highlight: any) => void) | null>(null);
   const highlighterUtilsRef = useRef<any>(null);
+  const [activeCitation, setActiveCitation] = useState<{ page: number; section?: string; query?: string } | null>(null);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -339,6 +354,256 @@ const AnalysisPage: React.FC<AnalysisPageProps> = () => {
     }
   }, [analysisId, fetchAnalysis, fetchAnnotations]);
 
+  const clearCitationHighlights = () => {
+    setActiveCitation(null);
+    // Clear the PDF.js find controller search so highlight indicators disappear
+    try {
+      highlighterUtilsRef.current?.search('', { highlightAll: false, caseSensitive: false });
+    } catch (_) {}
+  };
+
+  const highlightCitationOnPage = (pageNum: number, sectionName?: string, snippet?: string) => {
+    // Build the best search phrase we can from snippet then section name
+    const raw = (snippet || sectionName || '').replace(/[*_#|`[\]]/g, '').trim();
+    // Use first 8 words so the find controller can reliably match
+    const searchQuery = raw.split(/\s+/).slice(0, 8).join(' ');
+
+    if (!searchQuery || searchQuery.length < 4) return;
+
+    // Give the PDF.js text layer a moment to render, then fire the search
+    const attempts = [200, 600, 1200];
+    let fired = false;
+    attempts.forEach(delay => {
+      setTimeout(() => {
+        if (fired) return;
+        try {
+          if (highlighterUtilsRef.current?.search) {
+            highlighterUtilsRef.current.search(searchQuery, {
+              highlightAll: true,
+              caseSensitive: false
+            });
+            fired = true;
+          }
+        } catch (e) {
+          console.warn('PDF search highlight error:', e);
+        }
+      }, delay);
+    });
+  };
+
+  const handleSourceClick = (sourceInput: string | SourceDetail, fallbackSnippet?: string) => {
+    let pageNum: number | undefined;
+    let sectionName: string | undefined;
+    let snippet: string | undefined = fallbackSnippet;
+    let sourceType: string = 'pdf';
+
+    if (typeof sourceInput === 'object' && sourceInput !== null) {
+      pageNum = sourceInput.page;
+      sectionName = sourceInput.section;
+      snippet = sourceInput.snippet || snippet;
+      sourceType = sourceInput.type || (pageNum ? 'pdf' : 'report');
+    } else {
+      const srcStr = String(sourceInput).trim();
+      const pageMatch = srcStr.match(/Page\s+(\d+)(?:[,\s:]+§?\s*(.*))?/i);
+      if (pageMatch) {
+        pageNum = parseInt(pageMatch[1], 10);
+        sectionName = pageMatch[2]?.trim();
+        sourceType = 'pdf';
+      } else {
+        sourceType = 'report';
+        sectionName = srcStr.replace(/^Analysis Report:\s*/i, '');
+      }
+    }
+
+    if (sourceType === 'report' || (!pageNum && sectionName)) {
+      setActiveTab('analysis');
+      setTimeout(() => {
+        const secMap: Record<string, string> = {
+          'methodology': 'methodology',
+          'methodological evaluation': 'methodology',
+          'evidence': 'evidence',
+          'evidence quality': 'evidence',
+          'results': 'evidence',
+          'novelty': 'novelty',
+          'novelty assessment': 'novelty',
+          'gaps': 'gaps',
+          'gap analysis': 'gaps',
+          'critical review': 'critical',
+          'verdict': 'verdict',
+          'overall verdict': 'verdict',
+          'summary': 'summary',
+          'executive summary': 'summary'
+        };
+        const targetId = secMap[(sectionName || '').toLowerCase().trim()];
+        if (targetId) {
+          const el = document.getElementById(targetId) || document.querySelector(`[data-section="${targetId}"]`);
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        }
+      }, 150);
+      return;
+    }
+
+    if (pageNum) {
+      const targetPage = pageNum;
+      if (!showPdf) {
+        setShowPdf(true);
+      }
+
+      setActiveCitation({
+        page: targetPage,
+        section: sectionName,
+        query: snippet || sectionName
+      });
+
+      const navigatePdf = () => {
+        if (highlighterUtilsRef.current) {
+          highlighterUtilsRef.current.goToPage(targetPage);
+        }
+
+        // highlightCitationOnPage fires the PDF.js search internally
+        highlightCitationOnPage(targetPage, sectionName, snippet);
+      };
+
+      if (!showPdf) {
+        setTimeout(navigatePdf, 350);
+      } else {
+        navigatePdf();
+      }
+    }
+  };
+
+  const renderMessageBody = (content: string, sourceDetails?: SourceDetail[]) => {
+    let clean = cleanChatText(content);
+
+    // 1. Strip any backticks wrapping citation markers, e.g. `[Page 2: ...]` -> [Page 2: ...]
+    clean = clean.replace(/`+(\[(?:Page\s+\d+|Analysis Report:)[^\]`]+\])`+/gi, '$1');
+
+    // 2. Remove any existing (#cite-...) so we never double-encode or create malformed markdown links
+    clean = clean.replace(/\[((?:Page\s+\d+|Analysis Report:|Methodolog|Evidence|Results|Critical|Novelty|Executive|Gap|Impact|Overall)[^\]]*)\]\(#cite-[^)]+\)/gi, '[$1]');
+
+    // 3. Normalize indentation: prevent accidental 4-space indented code blocks outside fenced code blocks
+    const lines = clean.split('\n');
+    let inFencedCode = false;
+    const normalizedLines = lines.map(line => {
+      if (line.trim().startsWith('```')) {
+        inFencedCode = !inFencedCode;
+        return line;
+      }
+      if (!inFencedCode) {
+        // If line has 4+ leading spaces but isn't empty, reduce leading indentation so CommonMark won't parse it as an indented code block
+        return line.replace(/^ {4,}/, '  ');
+      }
+      return line;
+    });
+    clean = normalizedLines.join('\n');
+
+    // 4. Transform citations in square brackets like [Page 2: ...], [Page 4], [Analysis Report: ...] or report sections into clickable links
+    const transformed = clean.replace(
+      /\[(Page\s+\d+[^\]\n]*|Analysis Report:[^\]\n]*|Methodology Evaluation|Methodological Evaluation|Evidence Quality|Results Scrutiny|Critical Review|Novelty Assessment|Executive Summary|Gap Analysis|Impact Assessment|Overall Verdict)\](?!\()/gi,
+      (match, p1) => {
+        const encoded = encodeURIComponent(p1.trim());
+        return `[${p1.trim()}](#cite-${encoded})`;
+      }
+    );
+
+    return (
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm, remarkMath]}
+        rehypePlugins={[rehypeKatex]}
+        components={{
+          a: ({ href, children }) => {
+            if (href?.startsWith('#cite-')) {
+              const rawCitation = decodeURIComponent(href.replace('#cite-', ''));
+              const matchedDetail = sourceDetails?.find(d => 
+                d.label.toLowerCase() === rawCitation.toLowerCase() ||
+                d.label.toLowerCase().includes(rawCitation.toLowerCase()) || 
+                rawCitation.toLowerCase().includes(d.label.toLowerCase()) ||
+                (d.page && rawCitation.toLowerCase().includes(`page ${d.page}`))
+              );
+
+              const isPdf = matchedDetail?.type === 'pdf' || 
+                            matchedDetail?.type === 'paper_chunk' || 
+                            (matchedDetail?.page !== undefined && matchedDetail?.page !== null) || 
+                            rawCitation.toLowerCase().startsWith('page');
+
+              return (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleSourceClick(matchedDetail || rawCitation);
+                  }}
+                  className={`inline-flex items-center space-x-1.5 px-2.5 py-0.5 my-0.5 mx-1 rounded-md text-xs font-bold transition-all shadow-xs cursor-pointer select-none group align-middle ${
+                    isPdf
+                      ? "bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 hover:border-indigo-300 hover:shadow-sm"
+                      : "bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100 hover:border-amber-300 hover:shadow-sm"
+                  }`}
+                  title={isPdf ? `Jump to PDF: ${rawCitation}` : `View ${rawCitation} in Analysis Report tab`}
+                >
+                  <span className="text-[11px]">{isPdf ? "📄" : "📊"}</span>
+                  <span className={isPdf ? "underline decoration-indigo-300 underline-offset-2" : "underline decoration-amber-300 underline-offset-2"}>{children}</span>
+                  <ExternalLink className="h-2.5 w-2.5 opacity-60 group-hover:opacity-100 transition-opacity ml-0.5" />
+                </button>
+              );
+            }
+            return (
+              <a 
+                href={href} 
+                target="_blank" 
+                rel="noreferrer" 
+                className="text-primary-600 hover:text-primary-800 underline underline-offset-2"
+              >
+                {children}
+              </a>
+            );
+          },
+          h1: ({ children }) => <h1 className="text-lg font-bold text-slate-900 mt-4 mb-2">{children}</h1>,
+          h2: ({ children }) => <h2 className="text-base font-bold text-slate-900 mt-3.5 mb-1.5">{children}</h2>,
+          h3: ({ children }) => <h3 className="text-sm font-bold text-slate-900 mt-3 mb-1">{children}</h3>,
+          h4: ({ children }) => <h4 className="text-xs font-bold text-slate-900 mt-2 mb-1">{children}</h4>,
+          p: ({ children }) => <p className="mb-2.5 last:mb-0 leading-relaxed text-[13.5px] text-slate-800">{children}</p>,
+          ul: ({ children }) => <ul className="list-disc pl-5 mb-2.5 space-y-1 text-[13.5px] text-slate-800">{children}</ul>,
+          ol: ({ children }) => <ol className="list-decimal pl-5 mb-2.5 space-y-1 text-[13.5px] text-slate-800">{children}</ol>,
+          li: ({ children }) => <li className="leading-relaxed text-[13.5px] text-slate-800">{children}</li>,
+          strong: ({ children }) => <strong className="font-bold text-slate-900">{children}</strong>,
+          em: ({ children }) => <em className="italic text-slate-800">{children}</em>,
+          blockquote: ({ children }) => <blockquote className="border-l-4 border-indigo-200 pl-3 my-2 italic text-slate-600 bg-slate-50/50 py-1 rounded-r">{children}</blockquote>,
+          code: ({ inline, className, children, ...props }: any) => {
+            if (inline) {
+              return (
+                <code className="bg-slate-100 text-slate-800 px-1.5 py-0.5 rounded text-xs font-mono" {...props}>
+                  {children}
+                </code>
+              );
+            }
+            return (
+              <pre className="p-3 bg-slate-900 text-slate-100 rounded-xl overflow-x-auto text-xs my-2.5 font-mono">
+                <code {...props}>{children}</code>
+              </pre>
+            );
+          },
+          table: ({ children }) => (
+            <div className="overflow-x-auto my-3 border border-slate-200 rounded-xl shadow-xs">
+              <table className="min-w-full divide-y divide-slate-200 text-xs text-left">
+                {children}
+              </table>
+            </div>
+          ),
+          thead: ({ children }) => <thead className="bg-slate-50 text-slate-700 font-bold uppercase text-[10px] tracking-wider">{children}</thead>,
+          tbody: ({ children }) => <tbody className="divide-y divide-slate-100 bg-white">{children}</tbody>,
+          tr: ({ children }) => <tr className="hover:bg-slate-50/70 transition-colors">{children}</tr>,
+          th: ({ children }) => <th className="px-3 py-2 font-semibold text-slate-700">{children}</th>,
+          td: ({ children }) => <td className="px-3 py-2 text-slate-600 font-normal">{children}</td>,
+        }}
+      >
+        {transformed}
+      </ReactMarkdown>
+    );
+  };
+
   const handleSendChatMessage = async (messageToSend?: string) => {
     const text = messageToSend || chatInput;
     if (!text.trim() || isChatLoading) return;
@@ -382,7 +647,8 @@ const AnalysisPage: React.FC<AnalysisPageProps> = () => {
       setChatMessages(prev => [...prev, {
         role: 'assistant',
         content: cleanChatText(data.answer),
-        sources: data.sources
+        sources: data.sources,
+        source_details: data.source_details
       }]);
     } catch (err: any) {
       console.error(err);
@@ -571,6 +837,28 @@ const AnalysisPage: React.FC<AnalysisPageProps> = () => {
             className="w-1/2 border-r border-slate-200 bg-slate-100/50 relative"
             style={{ height: '100%' }}
           >
+            {/* Floating Active Citation Banner */}
+            {activeCitation && (
+              <div className="absolute top-6 left-1/2 transform -translate-x-1/2 z-40 flex items-center space-x-2.5 bg-slate-900/95 backdrop-blur-md text-white px-4 py-2 rounded-xl shadow-soft-lg border border-slate-700/80 animate-fade-in text-xs font-semibold">
+                <span className="flex h-2 w-2 relative">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-400"></span>
+                </span>
+                <span className="text-amber-300 font-bold">Page {activeCitation.page}</span>
+                {activeCitation.section && (
+                  <span className="text-slate-200 truncate max-w-[280px]">· {activeCitation.section}</span>
+                )}
+                <button
+                  type="button"
+                  onClick={clearCitationHighlights}
+                  className="ml-1.5 p-0.5 text-slate-400 hover:text-white rounded transition-colors cursor-pointer"
+                  title="Dismiss citation highlight"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            )}
+
             <div 
               className="bg-white rounded-2xl shadow-soft overflow-hidden border border-slate-200"
               style={{ position: 'absolute', top: '1rem', left: '1rem', right: '1rem', bottom: '1rem' }}
@@ -869,15 +1157,47 @@ const AnalysisPage: React.FC<AnalysisPageProps> = () => {
                               {msg.contextText}
                             </div>
                           )}
-                          <p className="whitespace-pre-wrap leading-relaxed font-medium">{cleanChatText(msg.content)}</p>
+                          {msg.role === 'user' ? (
+                            <p className="whitespace-pre-wrap leading-relaxed font-medium">{cleanChatText(msg.content)}</p>
+                          ) : (
+                            renderMessageBody(msg.content, msg.source_details)
+                          )}
                           {msg.sources && msg.sources.length > 0 && (
-                            <div className="mt-4 pt-3 border-t border-slate-100/20 flex flex-wrap items-center gap-2">
-                              <span className="text-[10px] font-bold uppercase tracking-widest opacity-60">Sources:</span>
-                              {msg.sources.map((src, sidx) => (
-                                <span key={sidx} className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md text-[10px] font-bold border border-slate-200">
-                                  {src}
-                                </span>
-                              ))}
+                            <div className="mt-4 pt-3 border-t border-slate-100/60 flex flex-wrap items-center gap-2">
+                              <div className="flex items-center space-x-1 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                                <Compass className="h-3 w-3" />
+                                <span>Sources:</span>
+                              </div>
+                              {msg.sources.map((src, sidx) => {
+                                const matchedDetail = msg.source_details?.find(d => 
+                                  d.label.toLowerCase() === src.toLowerCase() ||
+                                  src.toLowerCase().includes(d.label.toLowerCase()) ||
+                                  (d.page && src.toLowerCase().includes(`page ${d.page}`))
+                                );
+                                const isPdf = matchedDetail?.type === 'pdf' || matchedDetail?.type === 'paper_chunk' || (matchedDetail?.page !== undefined && matchedDetail?.page !== null) || src.toLowerCase().startsWith('page');
+
+                                return (
+                                  <button
+                                    key={sidx}
+                                    type="button"
+                                    onClick={() => handleSourceClick(matchedDetail || src)}
+                                    className={`inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-lg text-xs font-bold border transition-all shadow-xs cursor-pointer group ${
+                                      isPdf
+                                        ? "bg-indigo-50/70 hover:bg-indigo-100 text-indigo-800 border-indigo-200 hover:border-indigo-300"
+                                        : "bg-amber-50/70 hover:bg-amber-100 text-amber-800 border-amber-200 hover:border-amber-300"
+                                    }`}
+                                    title={isPdf ? `Jump to PDF: ${src}` : `Jump to Analysis Report: ${src}`}
+                                  >
+                                    {isPdf ? (
+                                      <FileText className="h-3 w-3 text-indigo-600 group-hover:scale-110 transition-transform" />
+                                    ) : (
+                                      <Bookmark className="h-3 w-3 text-amber-600 group-hover:scale-110 transition-transform" />
+                                    )}
+                                    <span>{src}</span>
+                                    <ExternalLink className="h-2.5 w-2.5 opacity-50 group-hover:opacity-100 transition-opacity" />
+                                  </button>
+                                );
+                              })}
                             </div>
                           )}
                         </div>

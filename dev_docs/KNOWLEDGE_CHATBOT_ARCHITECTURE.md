@@ -136,13 +136,38 @@ The frontend ([`AnalysisPage.tsx`](../frontend/src/pages/AnalysisPage.tsx#L358))
 ### Response: `200 OK`
 ```json
 {
-  "answer": "The authors evaluated their model against three primary baselines [Page 8]: ... However, the critical review notes that baseline B was trained on a smaller dataset [Results Scrutiny].",
-  "sources": ["Page 8", "Page 11", "Results Scrutiny"]
+  "answer": "The authors developed SpyCI-LAMBS to quantify binding affinities [Page 2: Quantifying selectivity by SpyCI-LAMBS]. However, baseline B was evaluated on a smaller sample size [Results Scrutiny].",
+  "sources": [
+    "Page 2: Quantifying selectivity by SpyCI-LAMBS",
+    "Results Scrutiny"
+  ],
+  "source_details": [
+    {
+      "label": "Page 2: Quantifying selectivity by SpyCI-LAMBS",
+      "page": 2,
+      "section": "Quantifying selectivity by SpyCI-LAMBS",
+      "snippet": "We developed SpyCI-LAMBS to measure binding affinities across...",
+      "type": "paper_chunk"
+    },
+    {
+      "label": "Results Scrutiny",
+      "page": null,
+      "section": "Results Scrutiny",
+      "snippet": null,
+      "type": "analysis_report"
+    }
+  ]
 }
 ```
 
-### Interactive UI Highlights
-Because sources return `"Page X"`, the frontend's existing citation chips automatically enable researchers to click a source badge and jump directly to that page in the embedded PDF viewer.
+### Interactive UI Highlights & Deep Linking
+1. **In-Text & Chip Hyperlinks**: Assistant responses parse bracketed citations (`[Page X: Section]` or `[Page X]` or `[Review Section]`) as interactive, styled badge buttons with external-link icons.
+2. **One-Click PDF Navigation**: Clicking any page citation:
+   - Ensures the PDF viewer panel is visible (`setShowPdf(true)`).
+   - Scrolls the embedded viewer directly to the cited page via `highlighterUtilsRef.current.goToPage(pageNum)`.
+   - Triggers an animated pulse glow (`.page-citation-target`) around the target PDF page container.
+   - Searches for the relevant snippet in the PDF viewer via `highlighterUtilsRef.current.search(phrase)`, automatically highlighting the matching text.
+3. **Peer Review Deep Linking**: Citations to review sections (e.g., `[Methodology Evaluation]`) switch the active tab to `Analysis` and smoothly scroll to the corresponding evaluation card.
 
 ---
 
@@ -154,18 +179,20 @@ Because sources return `"Page X"`, the frontend's existing citation chips automa
 | **Phase 2** | LangGraph ReAct Deep Agent (`knowledge_chat_agent.py`) with 4 tools | ✅ Completed |
 | **Phase 3** | Celery Worker & Dependency Decoupling (removed `llama-cloud-services`) | ✅ Completed |
 | **Phase 4** | Global Model & Temperature defaults (`gemini-3.5-flash`, `1.0`) | ✅ Completed |
-| **Phase 5** | Automated Testing & Verification | ✅ All 25 tests passing |
+| **Phase 5** | Granular Citations & Interactive PDF Deep Linking | ✅ Completed |
+| **Phase 6** | Automated Testing & Verification | ✅ All 28 tests passing |
 
 ### Automated Test Verification
 Run from `backend/`:
 ```bash
 pytest
-# Results: 25 passed in 20.23s
+# Results: 28 passed in 21.05s
 ```
 Key tests verified:
-- `tests/test_knowledge_chat.py::test_retrieve_paper_chunks`: Verified keyword and page-filtered chunk retrieval.
+- `tests/test_knowledge_chat.py::test_retrieve_paper_chunks`: Verified keyword and page-filtered chunk retrieval with headings.
+- `tests/test_knowledge_chat.py::test_granular_citations_and_source_details`: Verified granular source extraction, section parsing, and `source_details` generation.
 - `tests/test_knowledge_chat.py::test_lookup_analysis_report`: Verified structured synthesis report section extraction.
 - `tests/test_knowledge_chat.py::test_lookup_tables_and_figures`: Verified table formatting and OCR caption inspection.
 - `tests/test_knowledge_chat.py::test_get_paper_metadata`: Verified paper title, authors, and metric retrieval.
-- `tests/test_chat.py::test_chat_endpoint_success`: Verified end-to-end API response contract with citations.
+- `tests/test_chat.py::test_chat_endpoint_success`: Verified end-to-end API response contract with citations and source_details.
 - `tests/test_chat.py::test_chat_endpoint_analysis_not_found`: Verified 404 response on missing analysis ID.

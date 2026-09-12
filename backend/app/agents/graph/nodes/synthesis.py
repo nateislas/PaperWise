@@ -26,10 +26,12 @@ async def synthesis_node(state: PaperAnalysisState) -> Dict[str, Any]:
     logger.info("🧪 Node: Final Synthesis")
     start_time = time.time()
     
+    thinking_level = settings.get_thinking_level("synthesis")
     llm = ChatGoogleGenerativeAI(
         model=settings.gemini_model,
         google_api_key=settings.gemini_api_key,
-        temperature=settings.gemini_temperature
+        temperature=settings.gemini_temperature,
+        thinking_level=thinking_level
     ).with_structured_output(AnalysisReport)
     
     paper_info = state["parsed_content"].get("metadata", {}) if state.get("parsed_content") else {}

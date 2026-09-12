@@ -296,3 +296,62 @@ def test_chat_api_endpoint(tmp_path):
         json={"message": "Hello"}
     )
     assert resp_404.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_granular_citations_and_source_details():
+    """Verify granular citations with page and section titles produce structured source_details."""
+    agent = KnowledgeChatAgent("test-granular-id")
+    
+    mock_parsed = {
+        "chunks": [
+            {
+                "text": "SpyCI-LAMBS assay details...",
+                "page": 2,
+                "section": "Quantifying selectivity by SpyCI-LAMBS",
+                "snippet": "Our goal was to miniaturize the column-based approach"
+            },
+            {
+                "text": "LanM ortholog selectivity...",
+                "page": 7,
+                "section": "C5 LanMs reject lanthanum",
+                "snippet": "Melba-LanM achieved 94.7 mol% La purity"
+            }
+        ]
+    }
+    agent._load_data = AsyncMock(return_value=(mock_parsed, {}, {}))
+    
+    mock_agent_runnable = MagicMock()
+    mock_agent_runnable.ainvoke = AsyncMock(return_value={
+        "messages": [
+            AIMessage(content="We developed SpyCI-LAMBS [Page 2: Quantifying selectivity by SpyCI-LAMBS]. Melba-LanM rejected lanthanum [Page 7: C5 LanMs reject lanthanum]. Overall, the review is positive [Critical Review].")
+        ]
+    })
+    
+    with patch("app.agents.knowledge_chat_agent.create_react_agent", return_value=mock_agent_runnable):
+        res = await agent.chat("Tell me about SpyCI-LAMBS")
+        
+        assert "sources" in res
+        assert "source_details" in res
+        
+        sources = res["sources"]
+        assert "Page 2: Quantifying selectivity by SpyCI-LAMBS" in sources
+        assert "Page 7: C5 LanMs reject lanthanum" in sources
+        assert "Critical Review" in sources
+        
+        details = res["source_details"]
+        assert len(details) == 3
+        
+        p2_detail = next(d for d in details if d.get("page") == 2)
+        assert p2_detail["section"] == "Quantifying selectivity by SpyCI-LAMBS"
+        assert p2_detail["snippet"] == "Our goal was to miniaturize the column-based approach"
+        assert p2_detail["type"] == "pdf"
+        
+        p7_detail = next(d for d in details if d.get("page") == 7)
+        assert p7_detail["section"] == "C5 LanMs reject lanthanum"
+        assert p7_detail["snippet"] == "Melba-LanM achieved 94.7 mol% La purity"
+        assert p7_detail["type"] == "pdf"
+        
+        cr_detail = next(d for d in details if d.get("type") == "report")
+        assert cr_detail["section"] == "Critical Review"
+

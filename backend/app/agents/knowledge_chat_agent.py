@@ -2,7 +2,7 @@ import logging
 import os
 import re
 import json
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any, Optional, Tuple
 
 from langchain_core.tools import tool
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
@@ -17,15 +17,15 @@ logger = logging.getLogger(__name__)
 SYSTEM_PROMPT_TEMPLATE = """You are PaperWise's Knowledge Assistant, an expert scholar investigating the research paper: "{paper_title}".
 
 You have access to 4 specialized local research tools:
-1. `retrieve_paper_chunks`: Search relevant text passages across the paper with exact page numbers.
+1. `retrieve_paper_chunks`: Search relevant text passages across the paper with exact page numbers and section headings.
 2. `lookup_analysis_report`: Query our pre-computed peer review evaluation (methodology, evidence quality, gaps, novelty, critical review, verdict).
 3. `lookup_tables_and_figures`: Query extracted Markdown tables and figure diagrams with numerical metrics.
 4. `get_paper_metadata`: View paper title, authors, domain, publication venue, and citation metrics.
 
 Guidelines:
 - Ground your answers in evidence retrieved from the paper and our analysis report.
-- When referencing specific text, claims, or data from the paper, cite the exact page using `[Page X]` format (e.g. `[Page 4]`).
-- When referencing reviewer critiques or debate verdicts, cite the relevant section (e.g. `[Methodological Evaluation]` or `[Critical Review]`).
+- When referencing specific text, claims, or data from the paper, cite the exact page and section using `[Page X: Section Title]` format (e.g. `[Page 2: Quantifying selectivity by SpyCI-LAMBS]` or `[Page 7: C5 LanMs reject lanthanum]`). Always include both the page and section title when available.
+- When referencing reviewer critiques or debate verdicts, cite the relevant section using `[Analysis Report: Section Name]` or `[Section Name]` (e.g. `[Analysis Report: Methodological Evaluation]` or `[Critical Review]`).
 - If the user provides specific context from a highlighted passage, address that context directly while leveraging tools for broader connections.
 - Be concise, scholarly, objective, and clear. If a detail is missing or not covered in the paper, state that honestly.
 """
@@ -39,12 +39,16 @@ class KnowledgeChatAgent:
     
     def __init__(self, analysis_id: str):
         self.analysis_id = analysis_id
-        self.llm = ChatGoogleGenerativeAI(
-            model=settings.gemini_model,
-            google_api_key=settings.gemini_api_key,
-            temperature=settings.gemini_temperature,
-            timeout=settings.request_timeout
-        )
+        llm_kwargs = {
+            "model": settings.gemini_model,
+            "google_api_key": settings.gemini_api_key,
+            "temperature": settings.gemini_temperature,
+            "timeout": settings.request_timeout
+        }
+        thinking_level = settings.get_thinking_level("chat")
+        if thinking_level:
+            llm_kwargs["thinking_level"] = thinking_level
+        self.llm = ChatGoogleGenerativeAI(**llm_kwargs)
 
     async def _load_data(self):
         parsed_content = await analysis_manager.get_parsed_content_async(self.analysis_id)
@@ -54,11 +58,89 @@ class KnowledgeChatAgent:
         metadata = analysis_manager.get_analysis_metadata(self.analysis_id) or {}
         return parsed_content, comprehensive, metadata
 
-    def _build_tools(self, parsed_content: Dict[str, Any], comprehensive: Dict[str, Any], metadata: Dict[str, Any]):
+    @staticmethod
+    def _is_valid_section(title: str) -> bool:
+        """Validate if a string is a legitimate section title rather than an author, DOI, or citation line."""
+        if not title:
+            return False
+        t = title.strip().strip('*').strip('#').strip()
+        if len(t) < 3 or len(t) > 70:
+            return False
+        if re.search(r'\d+,\s*\d+-\d+\s*\(\d{4}\)', t):
+            return False
+        if re.search(r'^\d+[\s,]+\d+', t):
+            return False
+        if re.search(r'https?://|doi\.org', t, re.I):
+            return False
+        if re.search(r'^(fig|table|extended data|article|received|accepted|published|supplementary)', t, re.I):
+            return False
+        return True
+
+    @staticmethod
+    def _normalize_or_generate_chunks(parsed_content: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Normalize parsed chunks or dynamically slice text_content if chunks are missing."""
         chunks = parsed_content.get("chunks", [])
-        tables = parsed_content.get("tables", [])
-        figures = parsed_content.get("figures", [])
+        raw_text = parsed_content.get("text_content", "")
         
+        def _extract_snippet(text: str) -> str:
+            clean_lines = [l.strip() for l in text.split('\n') if l.strip() and not l.strip().startswith(('#', '|', '---'))]
+            first_line = clean_lines[0] if clean_lines else text.strip()
+            first_sentence = first_line.split('.')[0].strip()
+            snippet = re.sub(r'[*_#|`]', '', first_sentence)[:80].strip()
+            return snippet or first_line[:60].strip()
+
+        # If chunks are missing or empty, dynamically slice text_content by page headers
+        if not chunks and raw_text:
+            pages = re.split(r'--- Page (\d+) ---\n', raw_text)
+            current_sec = "Introduction"
+            generated_chunks = []
+            
+            for idx in range(1, len(pages), 2):
+                p_num = int(pages[idx])
+                p_text = pages[idx + 1]
+                
+                # Check for section headings on this page
+                for line in p_text.split('\n'):
+                    l_str = line.strip()
+                    hm = re.match(r'^(#{1,4})\s+([^\n]+)', l_str)
+                    if hm:
+                        candidate = hm.group(2).strip()
+                        if KnowledgeChatAgent._is_valid_section(candidate):
+                            current_sec = candidate
+                    elif l_str.startswith('**') and l_str.endswith('**'):
+                        candidate = l_str.strip('*').strip()
+                        if KnowledgeChatAgent._is_valid_section(candidate):
+                            current_sec = candidate
+                
+                paras = p_text.split('\n\n')
+                block = []
+                block_len = 0
+                for para in paras:
+                    p_clean = para.strip()
+                    if not p_clean:
+                        continue
+                    block.append(p_clean)
+                    block_len += len(p_clean)
+                    if block_len >= 800:
+                        combined = '\n\n'.join(block)
+                        generated_chunks.append({
+                            "text": combined,
+                            "page": p_num,
+                            "section": current_sec,
+                            "snippet": _extract_snippet(combined)
+                        })
+                        block = []
+                        block_len = 0
+                if block:
+                    combined = '\n\n'.join(block)
+                    generated_chunks.append({
+                        "text": combined,
+                        "page": p_num,
+                        "section": current_sec,
+                        "snippet": _extract_snippet(combined)
+                    })
+            chunks = generated_chunks
+
         # Normalize chunks for search
         normalized_chunks = []
         for i, c in enumerate(chunks):
@@ -66,28 +148,50 @@ class KnowledgeChatAgent:
                 text = c.get("text") or c.get("content") or ""
                 meta = c.get("metadata", {})
                 page = meta.get("page") or c.get("page") or 1
+                section = meta.get("section") or c.get("section") or ""
+                snippet = meta.get("snippet") or c.get("snippet") or ""
             elif hasattr(c, "page_content"):
                 text = c.page_content
                 meta = getattr(c, "metadata", {})
                 page = meta.get("page", 1)
+                section = meta.get("section", "")
+                snippet = meta.get("snippet", "")
             else:
                 text = str(c)
                 page = 1
-            normalized_chunks.append({"text": text, "page": int(page), "id": i})
+                section = ""
+                snippet = ""
+            
+            if not snippet and text:
+                snippet = _extract_snippet(text)
+
+            normalized_chunks.append({
+                "text": text,
+                "page": int(page),
+                "section": section,
+                "snippet": snippet,
+                "id": i
+            })
+        return normalized_chunks
+
+    def _build_tools(self, parsed_content: Dict[str, Any], comprehensive: Dict[str, Any], metadata: Dict[str, Any]):
+        normalized_chunks = self._normalize_or_generate_chunks(parsed_content)
+        tables = parsed_content.get("tables", [])
+        figures = parsed_content.get("figures", [])
 
         @tool
         def retrieve_paper_chunks(query: str, page_number: Optional[int] = None) -> str:
             """Search for relevant text passages in the research paper.
             Optionally filter by exact page_number (1-indexed).
-            Use this to look up specific claims, experimental setup, proofs, equations, or discussions."""
+            Returns matching passages with exact page numbers, section headings, and key quotes."""
             if not normalized_chunks:
-                # Fallback to text_content if chunks are empty
                 raw_text = parsed_content.get("text_content", "")
                 if raw_text:
                     return f"[Full Text Excerpt]\n{raw_text[:2500]}..."
                 return "No text chunks available for this paper."
             
-            tokens = set(re.findall(r'\w{3,}', query.lower()))
+            q_clean = query.lower().strip()
+            tokens = re.findall(r'\w{3,}', q_clean)
             scored = []
             for c in normalized_chunks:
                 if page_number is not None and c["page"] != int(page_number):
@@ -95,9 +199,22 @@ class KnowledgeChatAgent:
                 c_text = c["text"]
                 if not c_text:
                     continue
-                score = sum(1 for t in tokens if t in c_text.lower())
+                text_lower = c_text.lower()
+                sec_lower = (c.get("section") or "").lower()
+                
+                score = 0
+                # Exact phrase match boost
+                if len(tokens) > 1 and q_clean in text_lower:
+                    score += 20
+                # Token frequency with saturation cap
+                for t in tokens:
+                    count = text_lower.count(t)
+                    score += min(count, 5) * 2
+                    if t in sec_lower:
+                        score += 5
+                
                 if score > 0 or not tokens:
-                    scored.append((score, c["page"], c_text))
+                    scored.append((score, c["page"], c["section"], c["snippet"], c_text))
             
             if not scored:
                 if page_number is not None:
@@ -108,8 +225,10 @@ class KnowledgeChatAgent:
             top_matches = scored[:5]
             
             output = []
-            for score, page, text in top_matches:
-                output.append(f"--- [Page {page}] ---\n{text.strip()}")
+            for score, page, sec, snip, text in top_matches:
+                sec_header = f" | Section: {sec}" if sec else ""
+                snip_header = f"Key Passage: \"{snip}\"\n" if snip else ""
+                output.append(f"--- [Page {page}{sec_header}] ---\n{snip_header}{text.strip()}")
             return "\n\n".join(output)
 
         @tool
@@ -266,13 +385,14 @@ class KnowledgeChatAgent:
 
             prompt = (
                 f"You are the PaperWise Knowledge Research Assistant for the paper: '{paper_title}'. "
-                "You help researchers deeply understand, critique, and explore academic papers. You have access "
-                "to specialized tools to inspect the paper's exact text, peer review evaluation report, tables, figures, and metadata.\n\n"
-                "Guidelines:\n"
-                "1. Ground every claim using tool outputs. When citing paper text, cite the exact page like `[Page X]`.\n"
-                "2. When discussing methodology, limitations, evidence, or novelty, consult the pre-computed peer review report.\n"
-                "3. If tables or figures contain numerical results, consult the tables tool and present structured data.\n"
-                "4. Be objective, precise, and academically rigorous."
+                "You help researchers deeply understand, explore, and critique academic papers.\n\n"
+                "Grounding Rules:\n"
+                "1. PRIMARY SOURCE (The Research Paper): Always ground your answers first and foremost in the actual paper text and data using `retrieve_paper_chunks` and `lookup_tables_and_figures`. When the user asks about methodology, experiments, results, findings, or claims, search the paper text first and explain what the authors actually did in the study.\n"
+                "2. PDF CITATIONS: Whenever citing facts, methods, or findings from the paper, cite the exact page and section from the tool outputs in clean square brackets, e.g. [Page 2: Snapshots of the LanM selectivity landscape] or [Page 12: Methods]. CRITICAL: NEVER wrap citations in backticks (do NOT write `[Page X]` or ```code```). Plain square brackets [Page X: Section] are required so they become clickable hyperlinks.\n"
+                "3. AI PEER REVIEW REPORT: Use `lookup_analysis_report` ONLY when the user specifically asks for critique, limitations, strengths/weaknesses, peer review evaluation, or consensus score, OR as a short supplementary note. When citing the review report, cite it sparingly in plain brackets as [Analysis Report: Section Name] (e.g. [Analysis Report: Methodological Evaluation]). Never substitute the peer review critique in place of the authors' own methodology and findings.\n"
+                "4. FORMATTING & MATH: Format mathematical formulas using standard LaTeX math enclosed in single dollar signs for inline ($formula$) or double dollar signs for display ($$formula$$). Use markdown bullet points (- or *) for lists without adding 4-space indentation to regular continuation text.\n"
+                "5. NUMERICAL & BENCHMARK DATA: When quantitative data or benchmark comparisons are discussed, consult `lookup_tables_and_figures` and present structured data.\n"
+                "6. Always be clear and academically rigorous, distinguishing between what the authors published in the paper and what the automated peer review evaluated."
             )
 
             agent = create_react_agent(
@@ -295,7 +415,22 @@ class KnowledgeChatAgent:
             lang_messages.append(HumanMessage(content=clean_message))
             
             logger.info(f"🤖 Invoking LangGraph Deep Chat Agent for paper {self.analysis_id}")
-            result = await agent.ainvoke({"messages": lang_messages})
+            try:
+                result = await agent.ainvoke({"messages": lang_messages})
+            except Exception as invoke_err:
+                err_str = str(invoke_err)
+                if "Thinking level is not supported" in err_str or "INVALID_ARGUMENT" in err_str:
+                    logger.warning(f"Thinking level not supported for {settings.gemini_model}, retrying without thinking_level: {err_str}")
+                    fallback_llm = ChatGoogleGenerativeAI(
+                        model=settings.gemini_model,
+                        google_api_key=settings.gemini_api_key,
+                        temperature=settings.gemini_temperature,
+                        timeout=settings.request_timeout
+                    )
+                    agent = create_react_agent(model=fallback_llm, tools=tools, prompt=prompt)
+                    result = await agent.ainvoke({"messages": lang_messages})
+                else:
+                    raise invoke_err
             
             # Retrieve final assistant message
             response_messages = result.get("messages", [])
@@ -308,11 +443,13 @@ class KnowledgeChatAgent:
                         break
 
             # Extract citations from tool outputs and answer text
-            sources = self._extract_sources(response_messages, final_content)
+            normalized_chunks = self._normalize_or_generate_chunks(parsed_content)
+            sources, source_details = self._extract_sources(response_messages, final_content, normalized_chunks)
             
             return {
                 "answer": final_content,
-                "sources": sources
+                "sources": sources,
+                "source_details": source_details
             }
             
         except Exception as e:
@@ -370,18 +507,81 @@ class KnowledgeChatAgent:
             
         return str(content)
 
-    def _extract_sources(self, messages: List[Any], answer_text: str) -> List[str]:
-        """Extract exact page citations and analysis sections for UI badges."""
-        sources = set()
+    def _extract_sources(
+        self, 
+        messages: List[Any], 
+        answer_text: str, 
+        normalized_chunks: Optional[List[Dict[str, Any]]] = None
+    ) -> Tuple[List[str], List[Dict[str, Any]]]:
+        """Extract exact page citations and analysis sections for UI badges and deep links."""
+        source_labels = []
+        source_details = []
+        seen_keys = set()
         
-        # 1. Look for [Page X] or Page X in final answer
-        page_matches = re.findall(r'\[?Page\s+(\d+)\]?', answer_text, re.IGNORECASE)
-        for p in page_matches:
-            sources.add(f"Page {p}")
+        # Build page chunk map to match section & snippet
+        page_chunk_map: Dict[int, List[Dict[str, Any]]] = {}
+        if normalized_chunks:
+            for c in normalized_chunks:
+                p = c.get("page", 1)
+                if p not in page_chunk_map:
+                    page_chunk_map[p] = []
+                page_chunk_map[p].append(c)
+
+        # 1. Look for granular in-text citations: [Page X: Section] or [Page X]
+        # The section capture group deliberately excludes any embedded "Page " to prevent
+        # malformed labels like "Page 2: Page 3: Fig 1". It also stops at commas/semicolons.
+        granular_matches = re.findall(
+            r'\[?Page\s+(\d+)(?:[,\s:]+§?\s*([^\]\n,;]+?)(?=\s*(?:,\s*Page|\s+Page|\]|$)))?(?:\]|(?=\s*\[))',
+            answer_text,
+            re.IGNORECASE
+        )
+        for p_str, sec_str in granular_matches:
+            try:
+                page_num = int(p_str)
+            except ValueError:
+                continue
             
+            sec_clean = sec_str.strip() if sec_str else ""
+            # Remove any trailing punctuation and length-cap at 80 chars
+            sec_clean = re.sub(r'[\.\;\)\]]+$', '', sec_clean).strip()[:80]
+            # If the "section" still starts with "Page", it's a misparse — discard it
+            if re.match(r'^Page\s+\d+', sec_clean, re.IGNORECASE):
+                sec_clean = ""
+            
+            # Find matching snippet and fill section if omitted
+            matched_snippet = ""
+            matched_section = sec_clean
+            if page_num in page_chunk_map:
+                chunks_for_page = page_chunk_map[page_num]
+                if sec_clean:
+                    for chunk in chunks_for_page:
+                        c_sec = chunk.get("section", "")
+                        if sec_clean.lower() in c_sec.lower() or c_sec.lower() in sec_clean.lower():
+                            matched_snippet = chunk.get("snippet", "")
+                            if not matched_section:
+                                matched_section = c_sec
+                            break
+                if not matched_snippet and chunks_for_page:
+                    matched_snippet = chunks_for_page[0].get("snippet", "")
+                    if not matched_section and chunks_for_page[0].get("section"):
+                        matched_section = chunks_for_page[0].get("section")
+
+            label = f"Page {page_num}: {sec_clean}" if sec_clean else f"Page {page_num}"
+            key = (page_num, sec_clean)
+            if key not in seen_keys:
+                seen_keys.add(key)
+                source_labels.append(label)
+                source_details.append({
+                    "label": label,
+                    "page": page_num,
+                    "section": matched_section or None,
+                    "snippet": matched_snippet or None,
+                    "type": "pdf"
+                })
+
         # 2. Look for Report sections in final answer
         section_patterns = [
-            ("Methodology", "Methodology Evaluation"),
+            ("Methodology Evaluation", "Methodology Evaluation"),
             ("Methodological Evaluation", "Methodology Evaluation"),
             ("Evidence Quality", "Evidence Quality"),
             ("Results Scrutiny", "Results Scrutiny"),
@@ -389,20 +589,35 @@ class KnowledgeChatAgent:
             ("Executive Summary", "Executive Summary"),
             ("Gap Analysis", "Gap Analysis"),
             ("Novelty Assessment", "Novelty Assessment"),
+            ("Impact Assessment", "Impact Assessment"),
             ("Overall Verdict", "Overall Verdict")
         ]
         for pattern, label in section_patterns:
             if pattern.lower() in answer_text.lower():
-                sources.add(label)
+                key = (label, "report")
+                if key not in seen_keys:
+                    seen_keys.add(key)
+                    source_labels.append(label)
+                    source_details.append({
+                        "label": label,
+                        "section": label,
+                        "type": "report"
+                    })
         
-        # Natural sorting: pages first, then report sections
-        def sort_key(s: str):
-            if s.startswith("Page "):
-                try:
-                    return (0, int(s.split(" ")[1]))
-                except Exception:
-                    return (0, 999)
-            return (1, s)
+        # Sort sources: pages first (by page number), then report sections
+        def sort_key(s: Dict[str, Any]):
+            if s.get("type") == "pdf" and s.get("page"):
+                return (0, s["page"], s.get("section") or "")
+            return (1, 0, s.get("label") or "")
             
-        sorted_sources = sorted(list(sources), key=sort_key)
-        return sorted_sources if sorted_sources else ["Paper Content"]
+        source_details.sort(key=sort_key)
+        sorted_labels = [s["label"] for s in source_details]
+        
+        if not sorted_labels:
+            sorted_labels = ["Paper Content"]
+            source_details = [{
+                "label": "Paper Content",
+                "type": "unknown"
+            }]
+
+        return sorted_labels, source_details

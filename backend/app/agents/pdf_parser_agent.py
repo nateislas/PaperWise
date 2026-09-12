@@ -134,7 +134,17 @@ Provide clean, well-structured content that can be used by other analysis agents
                         "text_content": text_content,
                         "tables": tables,
                         "figures": figures,
-                        "metadata": metadata
+                        "metadata": metadata,
+                        "chunks": [
+                            {
+                                "text": d.page_content,
+                                "metadata": d.metadata,
+                                "page": d.metadata.get("page", 1),
+                                "section": d.metadata.get("section", ""),
+                                "snippet": d.metadata.get("snippet", "")
+                            }
+                            for d in documents
+                        ]
                     }
                 }
             finally:
@@ -452,11 +462,19 @@ JSON:"""
         return figures
     
     def _create_documents(self, text_content: str, metadata: Dict[str, Any]) -> List[Document]:
-        """Create LangChain Document objects from the extracted text"""
+        """Create LangChain Document objects from the extracted text with section and snippet tracking"""
         from app.config import settings
         
         documents = []
+        current_section = "Introduction"
         
+        def _extract_snippet(text: str) -> str:
+            clean_lines = [l.strip() for l in text.split('\n') if l.strip() and not l.strip().startswith(('#', '|', '---'))]
+            first_line = clean_lines[0] if clean_lines else text.strip()
+            first_sentence = first_line.split('.')[0].strip()
+            snippet = re.sub(r'[*_#|`]', '', first_sentence)[:80].strip()
+            return snippet or first_line[:60].strip()
+
         # Split text by page headers
         pages = re.split(r'--- Page (\d+) ---\n', text_content)
         
@@ -464,12 +482,14 @@ JSON:"""
         header_before = pages[0]
         if header_before.strip():
             chunks = self._split_text_into_chunks(header_before, settings.chunk_size, settings.chunk_overlap)
-            for i, chunk in enumerate(chunks):
+            for chunk in chunks:
                 doc = Document(
                     page_content=chunk,
                     metadata={
                         **metadata,
                         "page": 1,
+                        "section": current_section,
+                        "snippet": _extract_snippet(chunk),
                         "chunk_index": len(documents),
                         "chunk_size": len(chunk),
                         "source": metadata.get("title", "Unknown")
@@ -477,17 +497,50 @@ JSON:"""
                 )
                 documents.append(doc)
                 
+        def _is_valid_section(title: str) -> bool:
+            if not title:
+                return False
+            t = title.strip().strip('*').strip('#').strip()
+            if len(t) < 3 or len(t) > 70:
+                return False
+            if re.search(r'\d+,\s*\d+-\d+\s*\(\d{4}\)', t):
+                return False
+            if re.search(r'^\d+[\s,]+\d+', t):
+                return False
+            if re.search(r'https?://|doi\.org', t, re.I):
+                return False
+            if re.search(r'^(fig|table|extended data|article|received|accepted|published|supplementary)', t, re.I):
+                return False
+            return True
+
         for idx in range(1, len(pages), 2):
             page_num = int(pages[idx])
             page_text = pages[idx + 1]
             
+            # Check for section headings on this page
+            for line in page_text.split('\n'):
+                line_str = line.strip()
+                heading_match = re.match(r'^(#{1,4})\s+([^\n]+)', line_str)
+                if heading_match:
+                    sec = heading_match.group(2).strip()
+                    if _is_valid_section(sec):
+                        current_section = sec
+                elif line_str.startswith('**') and line_str.endswith('**'):
+                    sec = line_str.strip('*').strip()
+                    if _is_valid_section(sec):
+                        current_section = sec
+            
             chunks = self._split_text_into_chunks(page_text, settings.chunk_size, settings.chunk_overlap)
-            for i, chunk in enumerate(chunks):
+            for chunk in chunks:
+                chunk_headings = re.findall(r'^(#{1,4})\s+([^\n]+)', chunk, re.MULTILINE)
+                chunk_sec = chunk_headings[0][1].strip() if chunk_headings and _is_valid_section(chunk_headings[0][1].strip()) else current_section
                 doc = Document(
                     page_content=chunk,
                     metadata={
                         **metadata,
                         "page": page_num,
+                        "section": chunk_sec,
+                        "snippet": _extract_snippet(chunk),
                         "chunk_index": len(documents),
                         "chunk_size": len(chunk),
                         "source": metadata.get("title", "Unknown")
