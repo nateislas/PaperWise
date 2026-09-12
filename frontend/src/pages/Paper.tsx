@@ -610,7 +610,7 @@ export function Paper() {
               initialContext={chatInitialContext}
               concerns={concerns}
               onJumpToPdfPage={handleJumpToPdfPage}
-              onJumpToReportSection={(sec) => {
+              onJumpToReportSection={(sec: string) => {
                 handleTabChange('verdict');
                 const targetId = resolveReportSectionId(sec) || sec;
                 setTimeout(() => {
@@ -623,7 +623,7 @@ export function Paper() {
           {activeTab === 'notes' && (
             <NotesPanel
               notes={notes}
-              onJumpToNote={(n) => handleJumpToPdfPage(n.page, n.quote)}
+              onJumpToNote={(n: NoteItem) => handleJumpToPdfPage(n.page, n.quote)}
               onDeleteNote={handleDeleteNote}
             />
           )}
