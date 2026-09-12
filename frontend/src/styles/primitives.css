@@ -1,0 +1,65 @@
+/* Layer 1 — PRIMITIVES. The only file in the codebase allowed to contain raw hex colors. */
+
+:root {
+  /* Ink (neutrals) — hue ≈ 255°, chroma ≤ 0.02 */
+  --ink-0:   #ffffff;
+  --ink-25:  #fbfbfd;
+  --ink-50:  #f6f7f9;
+  --ink-100: #eceef2;
+  --ink-200: #dfe2e8;
+  --ink-300: #c3c8d2;
+  --ink-400: #98a0ae;
+  --ink-500: #6b7484;
+  --ink-600: #4f5766;
+  --ink-700: #3a414e;
+  --ink-800: #252a34;
+  --ink-900: #171b22;
+  --ink-950: #0e1116;
+
+  /* Accent (indigo-violet) */
+  --accent-50:  #eef0ff;
+  --accent-100: #e0e3ff;
+  --accent-200: #c6ccfe;
+  --accent-400: #818cf8;
+  --accent-500: #5b5bf0;
+  --accent-600: #4f46e5;
+  --accent-700: #4338ca;
+
+  /* Dark theme surfaces & accents */
+  --surface-hover-dark:    #1f242e;
+  --surface-selected-dark: #1e1f42;
+  --accent-dark:           #6366f1;
+  --accent-subtle-dark:    #1e1f42;
+
+
+  /* Status primitives — light */
+  --pos-light-dot:  #047857;
+  --pos-light-text: #047857;
+  --caut-light-dot: #ca8a04;
+  --caut-light-text:#a16207;
+  --neg-light-dot:  #be123c;
+  --neg-light-text: #be123c;
+
+  /* Status primitives — dark */
+  --pos-dark-dot:  #34d399;
+  --pos-dark-text: #6ee7b7;
+  --caut-dark-dot: #eab308;
+  --caut-dark-text:#fde047;
+  --neg-dark-dot:  #fb7185;
+  --neg-dark-text: #fda4af;
+
+  /* Status wash backgrounds */
+  --pos-light-wash: #ecfdf5;
+  --caut-light-wash:#fefce8;
+  --neg-light-wash: #fff1f2;
+
+  --pos-dark-wash:  #052e21;
+  --caut-dark-wash: #2c2410;
+  --neg-dark-wash:  #3b0a1a;
+
+  /* Elevation Shadows */
+  --shadow-xs: 0 1px 2px 0 rgba(14, 17, 22, 0.05);
+  --shadow-sm: 0 1px 3px 0 rgba(14, 17, 22, 0.10), 0 1px 2px -1px rgba(14, 17, 22, 0.10);
+  --shadow-md: 0 4px 6px -1px rgba(14, 17, 22, 0.10), 0 2px 4px -2px rgba(14, 17, 22, 0.05);
+  --shadow-lg: 0 10px 15px -3px rgba(14, 17, 22, 0.10), 0 4px 6px -4px rgba(14, 17, 22, 0.05);
+}

@@ -328,4 +328,6 @@ uploads/
 dev_docs/
 Claude outputs/
 
-
+# Project-specific exceptions — frontend paths caught by generic patterns above
+!frontend/src/lib/
+!frontend/public/

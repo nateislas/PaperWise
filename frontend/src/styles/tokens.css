@@ -1,0 +1,116 @@
+/* Layer 2 — SEMANTIC TOKENS. Maps primitive values to semantic usage for light and dark themes. */
+
+:root {
+  color-scheme: light;
+
+  /* Surfaces */
+  --canvas:            var(--ink-25);
+  --surface:           var(--ink-0);
+  --surface-sunken:    var(--ink-50);
+  --surface-hover:     var(--ink-50);
+  --surface-selected:  var(--accent-50);
+  --surface-inverse:   var(--ink-900);
+
+  /* Text */
+  --text-primary:      var(--ink-800);
+  --text-body:         var(--ink-600);
+  --text-secondary:    var(--ink-500);
+  --text-disabled:     var(--ink-300);
+  --text-inverse:      var(--ink-0);
+  --text-accent:       var(--accent-600);
+
+  /* Borders */
+  --border-subtle:     var(--ink-200);
+  --border-strong:     var(--ink-300);
+  --border-accent:     var(--accent-600);
+
+  /* Interaction */
+  --accent:            var(--accent-600);
+  --accent-hover:      var(--accent-700);
+  --accent-subtle:     var(--accent-50);
+  --focus-ring:        var(--accent-500);
+
+  /* Trust — dot */
+  --trust-strong:      var(--pos-light-dot);
+  --trust-adequate:    var(--ink-500);
+  --trust-weak:        var(--caut-light-dot);
+  --trust-failing:     var(--neg-light-dot);
+  --trust-unclear:     var(--ink-400);
+  --trust-unavailable: var(--ink-300);
+
+  /* Trust — text (AA-safe) */
+  --trust-strong-text:      var(--pos-light-text);
+  --trust-adequate-text:    var(--ink-600);
+  --trust-weak-text:        var(--caut-light-text);
+  --trust-failing-text:     var(--neg-light-text);
+  --trust-unclear-text:     var(--ink-500);
+  --trust-unavailable-text: var(--ink-400);
+
+  /* Trust — wash backgrounds */
+  --trust-strong-wash:  var(--pos-light-wash);
+  --trust-weak-wash:    var(--caut-light-wash);
+  --trust-failing-wash: var(--neg-light-wash);
+
+  /* Job status */
+  --status-queued:  var(--ink-400);
+  --status-running: var(--accent-600);
+  --status-ready:   var(--ink-500);
+  --status-failed:  var(--neg-light-dot);
+
+  /* Highlights (PDF annotation presets) */
+  --hl-yellow: rgba(234, 179, 8, 0.30);
+  --hl-green:  rgba(16, 185, 129, 0.28);
+  --hl-blue:   rgba(79, 70, 229, 0.22);
+  --hl-pink:   rgba(236, 72, 153, 0.24);
+  --hl-violet: rgba(139, 92, 246, 0.24);
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --canvas:            var(--ink-950);
+  --surface:           var(--ink-900);
+  --surface-sunken:    var(--ink-950);
+  --surface-hover:     var(--surface-hover-dark);
+  --surface-selected:  var(--surface-selected-dark);
+  --surface-inverse:   var(--ink-0);
+
+  --text-primary:      var(--ink-50);
+  --text-body:         var(--ink-300);
+  --text-secondary:    var(--ink-400);
+  --text-disabled:     var(--ink-600);
+  --text-inverse:      var(--ink-900);
+  --text-accent:       var(--accent-400);
+
+  --border-subtle:     var(--ink-800);
+  --border-strong:     var(--ink-700);
+  --border-accent:     var(--accent-400);
+
+  --accent:            var(--accent-dark);
+  --accent-hover:      var(--accent-400);
+  --accent-subtle:     var(--accent-subtle-dark);
+  --focus-ring:        var(--accent-400);
+
+  --trust-strong:      var(--pos-dark-dot);
+  --trust-adequate:    var(--ink-400);
+  --trust-weak:        var(--caut-dark-dot);
+  --trust-failing:     var(--neg-dark-dot);
+  --trust-unclear:     var(--ink-500);
+  --trust-unavailable: var(--ink-700);
+
+  --trust-strong-text:      var(--pos-dark-text);
+  --trust-adequate-text:    var(--ink-300);
+  --trust-weak-text:        var(--caut-dark-text);
+  --trust-failing-text:     var(--neg-dark-text);
+  --trust-unclear-text:     var(--ink-400);
+  --trust-unavailable-text: var(--ink-500);
+
+  --trust-strong-wash:  var(--pos-dark-wash);
+  --trust-weak-wash:    var(--caut-dark-wash);
+  --trust-failing-wash: var(--neg-dark-wash);
+
+  --status-queued:  var(--ink-500);
+  --status-running: var(--accent-400);
+  --status-ready:   var(--ink-400);
+  --status-failed:  var(--neg-dark-dot);
+}
